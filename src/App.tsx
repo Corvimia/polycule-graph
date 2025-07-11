@@ -548,7 +548,7 @@ export default function App() {
       </div>
           {/* Author attribution */}
           <div style={{ padding: '12px 0 18px 0', textAlign: 'center', fontSize: 14, color: dark ? '#bbb' : '#6c63ff', fontWeight: 500 }}>
-            made with love by <a href="#" style={{ color: dark ? '#fff' : '#6c63ff', textDecoration: 'underline', fontWeight: 700 }}>mia<span style={{ fontSize: '1.1em' }}>✨</span></a>
+            made with love by Mia✨
                 </div>
         </aside>
         {/* Main Visual Editor Area */}
