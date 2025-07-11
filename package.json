@@ -10,8 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@ts-graphviz/react": "^0.10.6",
+    "graphviz-react": "^1.2.5",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "ts-graphviz": "^2.1.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
