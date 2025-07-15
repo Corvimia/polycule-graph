@@ -11,6 +11,7 @@ import ReactFlow, {
   useReactFlow,
   ReactFlowProvider,
 } from 'reactflow';
+import MonacoEditor from '@monaco-editor/react';
 import type { Node, Edge, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 import './App.css'
@@ -79,7 +80,6 @@ export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selected, setSelected] = useState<{ type: 'node' | 'edge'; id: string } | null>(null);
-  const [addingEdge, setAddingEdge] = useState<{ from: string | null }>({ from: null });
   // Handler to request centering a node or edge
   const [centerRequest, setCenterRequest] = useState<{ type: 'node' | 'edge'; id: string } | null>(null);
 
@@ -92,7 +92,6 @@ export default function App() {
   // Responsive sidebar (drawer on small screens)
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 700);
   // Add edge mode
-  const [addEdgeMode, setAddEdgeMode] = useState(false);
   const [edgeFrom, setEdgeFrom] = useState<string | null>(null);
 
   // Responsive: open/close sidebar on resize
@@ -156,47 +155,38 @@ export default function App() {
   }
 
   const dot = useMemo(() => rfToDot(nodes, edges), [nodes, edges]);
-  const [dotError] = useState<string | null>(null);
 
   // Add edge handler
   const onConnect = (params: Edge | Connection) => {
     setEdges(eds => addEdge({ ...params, type: 'smoothstep', data: { color: '#888', width: 2 }, style: { stroke: '#888', strokeWidth: 2 } }, eds));
-    setAddEdgeMode(false);
     setEdgeFrom(null);
   };
 
   // Add edge mode logic
   const handleAddEdgeClick = () => {
-    setAddEdgeMode(true);
     setEdgeFrom(null);
     setSelected(null);
   };
   const handleNodeClick = (_: any, node: Node) => {
-    if (addEdgeMode) {
-      if (!edgeFrom) {
-        setEdgeFrom(node.id);
-      } else if (edgeFrom !== node.id) {
-        setEdges(eds => [
-          ...eds,
-          {
-            id: `e${edges.length + 1}`,
-            source: edgeFrom,
-            target: node.id,
-            type: 'smoothstep',
-            data: { color: '#888', width: 2 },
-            style: { stroke: '#888', strokeWidth: 2 },
-          },
-        ]);
-        setAddEdgeMode(false);
-        setEdgeFrom(null);
-      }
+    if (edgeFrom) {
+      setEdges(eds => [
+        ...eds,
+        {
+          id: `e${edges.length + 1}`,
+          source: edgeFrom,
+          target: node.id,
+          type: 'smoothstep',
+          data: { color: '#888', width: 2 },
+          style: { stroke: '#888', strokeWidth: 2 },
+        },
+      ]);
+      setEdgeFrom(null);
     } else {
       setSelected({ type: 'node', id: node.id });
     }
   };
 
   // Node/edge selection
-  const onNodeClick = (_: any, node: Node) => setSelected({ type: 'node', id: node.id });
   const onEdgeClick = (_: any, edge: Edge) => setSelected({ type: 'edge', id: edge.id });
 
   // Add node
@@ -213,28 +203,6 @@ export default function App() {
         style: { background: color, width: 40, height: 40 },
       },
     ]);
-  };
-
-  // Start adding edge
-  const startAddEdge = () => setAddingEdge({ from: null });
-  // When user clicks a node while adding an edge
-  const handleAddEdgeNodeClick = (nodeId: string) => {
-    if (!addingEdge.from) {
-      setAddingEdge({ from: nodeId });
-    } else if (addingEdge.from !== nodeId) {
-      setEdges(eds => [
-        ...eds,
-        {
-          id: `e${edges.length + 1}`,
-          source: addingEdge.from!,
-          target: nodeId,
-          type: 'default',
-          data: { color: '#888', width: 2 },
-          style: { stroke: '#888', strokeWidth: 2 },
-        },
-      ]);
-      setAddingEdge({ from: null });
-    }
   };
 
   // Delete node/edge
@@ -283,12 +251,12 @@ export default function App() {
         padding: '6px 10px',
         display: 'flex',
         alignItems: 'center',
-        border: addEdgeMode && !edgeFrom ? '2px dashed #6c63ff' : undefined,
+        border: edgeFrom === n.id ? '2px dashed #6c63ff' : undefined,
         boxShadow: selected?.type === 'node' && selected.id === n.id ? '0 2px 8px #6c63ff22' : undefined,
-        outline: addEdgeMode && edgeFrom === n.id ? '2px solid #ffd700' : undefined,
+        outline: edgeFrom === n.id ? '2px solid #ffd700' : undefined,
       }}
       onClick={() => {
-        if (addEdgeMode) {
+        if (edgeFrom) {
           handleNodeClick(null, n);
         } else {
           setSelected({ type: 'node', id: n.id });
@@ -531,7 +499,7 @@ export default function App() {
             <button onClick={addNode} title="Add Node" style={{ display: 'flex', alignItems: 'center', gap: 8, background: dark ? '#6c63ff' : '#6c63ff', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 14px', fontWeight: 600, fontSize: 16, cursor: 'pointer', boxShadow: '0 2px 8px #6c63ff22' }}>
               <FaPlus /> Add Node
             </button>
-            <button onClick={handleAddEdgeClick} title="Add Edge" style={{ display: 'flex', alignItems: 'center', gap: 8, background: addEdgeMode ? '#ffd700' : (dark ? '#23272f' : '#e0e7ff'), color: addEdgeMode ? '#222' : (dark ? '#fff' : '#6c63ff'), border: 'none', borderRadius: 6, padding: '10px 14px', fontWeight: 600, fontSize: 16, cursor: 'pointer', boxShadow: addEdgeMode ? '0 2px 8px #ffd70044' : '0 2px 8px #6c63ff11' }}>
+            <button onClick={handleAddEdgeClick} title="Add Edge" style={{ display: 'flex', alignItems: 'center', gap: 8, background: edgeFrom ? '#ffd700' : (dark ? '#23272f' : '#e0e7ff'), color: edgeFrom ? '#222' : (dark ? '#fff' : '#6c63ff'), border: 'none', borderRadius: 6, padding: '10px 14px', fontWeight: 600, fontSize: 16, cursor: 'pointer', boxShadow: edgeFrom ? '0 2px 8px #ffd70044' : '0 2px 8px #6c63ff11' }}>
               <FaLink /> Add Edge
             </button>
           </div>
@@ -548,7 +516,7 @@ export default function App() {
       </div>
           {/* Author attribution */}
           <div style={{ padding: '12px 0 18px 0', textAlign: 'center', fontSize: 14, color: dark ? '#bbb' : '#6c63ff', fontWeight: 500 }}>
-            made with love by Mia✨
+            made with love by <a href="#" style={{ color: dark ? '#fff' : '#6c63ff', textDecoration: 'underline', fontWeight: 700 }}>mia<span style={{ fontSize: '1.1em' }}>✨</span></a>
                 </div>
         </aside>
         {/* Main Visual Editor Area */}
@@ -575,7 +543,7 @@ export default function App() {
             centerRequest={centerRequest}
             setCenterRequest={setCenterRequest}
           />
-          {/* Collapsible DOT markup pane */}
+          {/* Collapsible DOT markup pane with Monaco editor */}
           <div
             style={{
               width: '100%',
@@ -585,13 +553,12 @@ export default function App() {
               fontSize: 15,
               borderTop: '1px solid #222',
               transition: 'max-height 0.3s',
-              maxHeight: showDot ? 240 : 36,
+              maxHeight: showDot ? 320 : 36,
               overflow: 'hidden',
               position: 'relative',
               boxShadow: showDot ? '0 -2px 12px #0002' : undefined,
               cursor: 'pointer',
             }}
-            onClick={() => setShowDot(v => !v)}
           >
             <button
               tabIndex={-1}
@@ -610,14 +577,49 @@ export default function App() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                pointerEvents: 'none',
+                pointerEvents: 'auto',
               }}
+              onClick={e => { e.stopPropagation(); setShowDot(v => !v); }}
             >
               <FaChevronDown style={{ transform: showDot ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }} />
               {showDot ? 'Hide Markup' : 'Show Markup'}
             </button>
-            <div style={{ padding: showDot ? '16px 24px 8px 24px' : '8px 24px', whiteSpace: 'pre', opacity: showDot ? 1 : 0.7, pointerEvents: showDot ? 'auto' : 'none', transition: 'opacity 0.3s' }}>
-              {dot}
+            <div
+              style={{
+                padding: showDot ? '0 0 0 0' : '8px 24px',
+                opacity: showDot ? 1 : 0.7,
+                pointerEvents: showDot ? 'auto' : 'none',
+                transition: 'opacity 0.3s',
+                height: showDot ? 280 : 0,
+                minHeight: showDot ? 180 : 0,
+                background: '#23272f',
+                cursor: 'auto',
+                display: showDot ? 'block' : 'none',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {showDot && (
+                <MonacoEditor
+                  height="260px"
+                  defaultLanguage="plaintext"
+                  theme="vs-dark"
+                  value={dot}
+                  options={{
+                    readOnly: true,
+                    fontSize: 15,
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    wordWrap: 'on',
+                    lineNumbers: 'off',
+                    padding: { top: 12, bottom: 12 },
+                    overviewRulerLanes: 0,
+                    scrollbar: { vertical: 'hidden', horizontal: 'hidden' },
+                    renderLineHighlight: 'none',
+                    folding: false,
+                    contextmenu: false,
+                  }}
+                />
+              )}
             </div>
           </div>
         </main>
