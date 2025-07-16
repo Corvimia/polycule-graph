@@ -1,69 +1,27 @@
-# React + TypeScript + Vite
+# polycule graph
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**polycule graph** is a modern, minimal web app for creating, editing, and visualizing graphs using DOT markup. It features:
 
-Currently, two official plugins are available:
+- **Live Graph Visualization:** Instantly see your graph rendered as you edit DOT code.
+- **DOT Markup Editor:** Edit your graph structure using an editor in the sidebar.
+- **Shareable Links:** Copy a URL that encodes your current graph, making sharing easy.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## Expanding the ESLint configuration
+- Add, edit, and delete nodes and edges visually or via DOT code.
+- Real-time graph rendering with Cytoscape.js.
+- Copy a shareable link to your current graph state.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## TODO
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- [ ] **Light/Dark Mode:** Add automatic theme switching based on system preferences and manual toggle
+- [ ] **Visual Graph Editing:**
+  - [ ] Double-click canvas to add new nodes
+  - [ ] Drag between nodes to create edges  
+  - [ ] Right-click nodes/edges to edit properties or delete
+  - [ ] Drag nodes to reposition them
+- [ ] **Export/Import**: Add support for exporting graphs to image (PNG/SVG) and importing from files.
+- [ ] **Better Error Handling**: Improve DOT parsing error messages and user feedback.
+- [ ] **Node/Edge Styling**: Allow users to customize node shapes, colors, and edge styles via UI.
+- [ ] **Templates**: Provide example graph templates for quick starting points.
+- [ ] **Help/Docs**: Add a help section or tooltips for DOT syntax and app usage.

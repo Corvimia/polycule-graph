@@ -1,37 +1,23 @@
 import CytoscapeComponent from 'react-cytoscapejs';
-import type { GraphNode, GraphEdge, CytoscapeEvent } from './types';
+import { useGraphContext } from '../contexts/GraphContext/GraphContext';
+import { useTheme } from '../contexts/ThemeContext/ThemeContext';
+import type cytoscape from 'cytoscape';
+import { stringToColor } from '../utils/graphDot';
+import { useRef, useState } from 'react';
+import { useCytoscapeInteractions } from '../hooks/useCytoscapeInteractions';
 
 interface GraphViewProps {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-  selected: { type: 'node' | 'edge'; id: string } | null;
-  setSelected: (sel: { type: 'node' | 'edge'; id: string } | null) => void;
-  dark: boolean;
   sidebarOpen: boolean;
   isMobile: boolean;
 }
 
-// Debug: Log props to check rendering and data
+export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
+  const { nodes, edges } = useGraphContext();
+  const { dark } = useTheme();
+  const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined);
+  
+  useCytoscapeInteractions(cy);
 
-// Hash a string to a color (HSL)
-function stringToColor(str: string): string {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash) + str.charCodeAt(i) * (i + 13); // more entropy
-  }
-  // Add string length and char code sum for more randomness
-  const charSum = str.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const h = Math.abs(hash + charSum * 31) % 360;
-  const s = 65 + (charSum % 20); // 65-85%
-  const l = 55 + (hash % 10); // 55-64%
-  return `hsl(${h}, ${s}%, ${l}%)`;
-}
-
-export function GraphView({ nodes, edges, setSelected, dark, sidebarOpen, isMobile }: GraphViewProps) {
-  // Debug: Log nodes and edges
-  console.log('[GraphView] Rendering', { nodesCount: nodes.length, edgesCount: edges.length });
-  console.log('[GraphView] nodes:', nodes);
-  console.log('[GraphView] edges:', edges);
   return (
     <main className={`flex-1 flex flex-col items-stretch relative bg-neutral-100 dark:bg-neutral-900 min-w-0 min-h-0 overflow-hidden ${!isMobile && sidebarOpen ? 'ml-80' : ''} transition-all duration-200`} style={{ minHeight: '60vh', height: '100%' }}>
       <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', justifyContent: 'center', minHeight: '60vh', height: '100%', minWidth: 0 }}>
@@ -110,23 +96,7 @@ export function GraphView({ nodes, edges, setSelected, dark, sidebarOpen, isMobi
               },
             },
           ]}
-          cy={(cy: any) => { // fallback to any for cy instance for now
-            if (typeof cy.off === 'function') cy.off('tap');
-            cy.on('tap', 'node', (evt: CytoscapeEvent) => {
-              const node = evt.target.data();
-              setSelected({ type: 'node', id: node.id });
-            });
-            cy.on('tap', 'edge', (evt: CytoscapeEvent) => {
-              const edge = evt.target.data();
-              setSelected({ type: 'edge', id: edge.id });
-            });
-            cy.on('tap', (evt: CytoscapeEvent) => {
-              // If the tap target is the background, clear selection
-              if (typeof evt.target.data === 'function' && evt.target.data().id === undefined) {
-                setSelected(null);
-              }
-            });
-          }}
+          cy={setCy}
         />
       </div>
     </main>

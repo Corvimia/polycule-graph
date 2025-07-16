@@ -69,14 +69,3 @@ export interface DotGraph {
 
 // For dotAstToCytoscape
 export type DotAst = DotGraph[];
-
-// Event and Cytoscape types (for GraphView)
-export interface CytoscapeInstance {
-  on: (event: string, selector: string | ((evt: any) => void), callback?: (evt: any) => void) => void;
-}
-
-export interface CytoscapeEvent {
-  target: {
-    data: () => { id: string };
-  };
-} 
