@@ -3,7 +3,7 @@ import { useGraphContext } from '../contexts/GraphContext/GraphContext';
 import { useTheme } from '../contexts/ThemeContext/ThemeContext';
 import type cytoscape from 'cytoscape';
 import { stringToColor } from '../utils/graphDot';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useCytoscapeInteractions } from '../hooks/useCytoscapeInteractions';
 
 interface GraphViewProps {
@@ -15,7 +15,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const { nodes, edges } = useGraphContext();
   const { dark } = useTheme();
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined);
-  
+
   useCytoscapeInteractions(cy);
 
   return (
