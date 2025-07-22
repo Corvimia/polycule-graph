@@ -7,6 +7,7 @@ import { stringToColor } from '../utils/graphDot';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useCytoscapeInteractions } from '../hooks/useCytoscapeInteractions';
 import { ContextMenu, ContextMenuItem, ContextMenuRoot } from './ui/context-menu';
+import { useHotkeys } from 'react-hotkeys-hook';
 
 interface GraphViewProps {
   sidebarOpen: boolean;
@@ -66,8 +67,6 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     }
   }, [renamingNode]);
 
-
-
   // Run layout on initial load
   useEffect(() => {
     if (cy && nodes.length > 0) {
@@ -75,26 +74,20 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     }
   }, [cy]); // Only run when cy is first set
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle layout shortcut if no input is active and we have a graph
-      if ((event.key === 'l' || event.key === 'L') && 
-          event.target instanceof Element && 
-          !event.target.closest('input') && 
-          !event.target.closest('textarea') && 
-          !event.target.closest('[contenteditable]') &&
-          cy && nodes.length > 0) {
-        
-        event.preventDefault();
-        console.log('Triggering layout from global shortcut...');
-        triggerLayout();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [triggerLayout, cy, nodes.length]);
+  // Keyboard shortcuts using react-hotkeys-hook
+  useHotkeys('l', (e) => {
+    // Only trigger layout if we have a graph and no input is focused
+    // Also check that no modifier keys are pressed (cmd, ctrl, alt, shift)
+    if (cy && nodes.length > 0 && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      e.preventDefault();
+      console.log('Triggering layout from hotkey...');
+      triggerLayout();
+    }
+  }, {
+    enableOnFormTags: false, // Don't trigger when in input fields
+    preventDefault: false, // Let us handle preventDefault manually
+    enableOnContentEditable: false, // Don't trigger when in contenteditable elements
+  }, [cy, nodes.length, triggerLayout]);
 
   return (
     <main 
@@ -105,16 +98,6 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
         // Focus the main container when clicked
         if (e.target === e.currentTarget) {
           e.currentTarget.focus();
-        }
-      }}
-      onKeyDown={(e) => {
-        if ((e.key === 'l' || e.key === 'L') && 
-            e.target instanceof Element && 
-            !e.target.closest('input') && 
-            !e.target.closest('textarea')) {
-          e.preventDefault();
-          console.log('Layout triggered from main container');
-          triggerLayout();
         }
       }}
     >
