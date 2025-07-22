@@ -3,7 +3,7 @@ import { useGraphContext } from '../contexts/GraphContext/GraphContext';
 import { useTheme } from '../contexts/ThemeContext/ThemeContext';
 import type cytoscape from 'cytoscape';
 import { stringToColor } from '../utils/graphDot';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useCytoscapeInteractions } from '../hooks/useCytoscapeInteractions';
 
 interface GraphViewProps {
@@ -11,12 +11,48 @@ interface GraphViewProps {
   isMobile: boolean;
 }
 
+// Simple Card component for the menu container
+const Card = ({ children, className = "", ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg backdrop-blur-sm ${className}`}
+    {...props}
+  >
+    {children}
+  </div>
+);
+
+// Simple Button component for menu items
+const Button = ({ children, className = "", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+  <button
+    className={`w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${className}`}
+    {...props}
+  >
+    {children}
+  </button>
+);
+
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const { nodes, edges } = useGraphContext();
   const { dark } = useTheme();
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
-  useCytoscapeInteractions(cy);
+  const {
+    contextNode,
+    contextMenuPos,
+    edgeSource,
+    setContextMenuPos,
+    setEdgeSource,
+  } = useCytoscapeInteractions(cy);
+
+  // Close context menu on click elsewhere
+  useEffect(() => {
+    const handleClick = () => setContextMenuPos(null);
+    if (contextMenuPos) {
+      window.addEventListener('click', handleClick);
+      return () => window.removeEventListener('click', handleClick);
+    }
+  }, [contextMenuPos, setContextMenuPos]);
 
   return (
     <main className={`flex-1 flex flex-col items-stretch relative bg-neutral-100 dark:bg-neutral-900 min-w-0 min-h-0 overflow-hidden ${!isMobile && sidebarOpen ? 'ml-80' : ''} transition-all duration-200`} style={{ minHeight: '60vh', height: '100%' }}>
@@ -98,7 +134,37 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
           ]}
           cy={setCy}
         />
+        {/* Custom Context Menu with nicer components */}
+        {contextMenuPos && contextNode && (
+          <div
+            ref={contextMenuRef}
+            style={{ 
+              position: 'fixed', 
+              left: contextMenuPos.x, 
+              top: contextMenuPos.y, 
+              zIndex: 1000 
+            }}
+            className="animate-in fade-in-0 zoom-in-95 duration-200"
+          >
+            <Card className="min-w-[140px] p-1">
+              <Button
+                onClick={() => {
+                  setEdgeSource(contextNode);
+                  setContextMenuPos(null);
+                }}
+              >
+                New edge
+              </Button>
+            </Card>
+          </div>
+        )}
       </div>
+      {/* Optionally, show a hint when in edge creation mode */}
+      {edgeSource && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-4 py-2 rounded shadow-lg z-50">
+          Click another node to create an edge from <b>{edgeSource}</b>
+        </div>
+      )}
     </main>
   );
 } 
