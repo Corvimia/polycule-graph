@@ -32,7 +32,7 @@ const Button = ({ children, className = "", ...props }: React.ButtonHTMLAttribut
 );
 
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
-  const { nodes, edges } = useGraphContext();
+  const { nodes, edges, deleteNode } = useGraphContext();
   const { dark } = useTheme();
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -154,6 +154,15 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 }}
               >
                 New edge
+              </Button>
+              <Button
+                className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
+                onClick={() => {
+                  deleteNode(contextNode);
+                  setContextMenuPos(null);
+                }}
+              >
+                Delete
               </Button>
             </Card>
           </div>

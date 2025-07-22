@@ -11,6 +11,7 @@ interface GraphContextType {
   updateNode: (id: string, data: Partial<GraphNode['data']>) => void;
   updateEdge: (id: string, data: Partial<GraphEdge['data']>) => void;
   deleteSelected: () => void;
+  deleteNode: (nodeId: string) => void;
   setNodes: (nodes: GraphNode[]) => void;
   setEdges: (edges: GraphEdge[]) => void;
   copyLink: () => void;

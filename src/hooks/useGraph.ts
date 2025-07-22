@@ -78,6 +78,15 @@ export function useGraph() {
     setSelected(null);
   }, [selected]);
 
+  const deleteNode = useCallback((nodeId: string) => {
+    setNodes(nds => nds.filter(n => n.id !== nodeId));
+    setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
+    // Clear selection if the deleted node was selected
+    if (selected && selected.type === 'node' && selected.id === nodeId) {
+      setSelected(null);
+    }
+  }, [selected]);
+
   useGraphUrlHash(nodes, edges, setNodes, setEdges);
 
   const copyLink = useCallback(() => {
@@ -89,7 +98,7 @@ export function useGraph() {
     setSelected,
     addNode, addEdge,
     updateNode, updateEdge,
-    deleteSelected,
+    deleteSelected, deleteNode,
     setNodes, setEdges,
     copyLink,
   };
