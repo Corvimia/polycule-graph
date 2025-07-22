@@ -32,13 +32,14 @@ const Button = ({ children, className = "", ...props }: React.ButtonHTMLAttribut
 );
 
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
-  const { nodes, edges, deleteNode } = useGraphContext();
+  const { nodes, edges, deleteNode, deleteEdge } = useGraphContext();
   const { dark } = useTheme();
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
   const {
     contextNode,
+    contextEdge,
     contextMenuPos,
     edgeSource,
     setContextMenuPos,
@@ -134,8 +135,8 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
           ]}
           cy={setCy}
         />
-        {/* Custom Context Menu with nicer components */}
-        {contextMenuPos && contextNode && (
+        {/* Custom Context Menu for nodes and edges */}
+        {contextMenuPos && (contextNode || contextEdge) && (
           <div
             ref={contextMenuRef}
             style={{ 
@@ -147,23 +148,40 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
             className="animate-in fade-in-0 zoom-in-95 duration-200"
           >
             <Card className="min-w-[140px] p-1">
-              <Button
-                onClick={() => {
-                  setEdgeSource(contextNode);
-                  setContextMenuPos(null);
-                }}
-              >
-                New edge
-              </Button>
-              <Button
-                className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
-                onClick={() => {
-                  deleteNode(contextNode);
-                  setContextMenuPos(null);
-                }}
-              >
-                Delete
-              </Button>
+              {/* Node context menu */}
+              {contextNode && (
+                <>
+                  <Button
+                    onClick={() => {
+                      setEdgeSource(contextNode);
+                      setContextMenuPos(null);
+                    }}
+                  >
+                    New edge
+                  </Button>
+                  <Button
+                    className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
+                    onClick={() => {
+                      deleteNode(contextNode);
+                      setContextMenuPos(null);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </>
+              )}
+              {/* Edge context menu */}
+              {contextEdge && (
+                <Button
+                  className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
+                  onClick={() => {
+                    deleteEdge(contextEdge);
+                    setContextMenuPos(null);
+                  }}
+                >
+                  Delete
+                </Button>
+              )}
             </Card>
           </div>
         )}

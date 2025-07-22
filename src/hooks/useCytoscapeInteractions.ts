@@ -5,6 +5,7 @@ import { useGraphContext } from '../contexts/GraphContext/GraphContext';
 export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
   const { setSelected, addNode, addEdge, nodes } = useGraphContext();
   const [contextNode, setContextNode] = useState<string | null>(null);
+  const [contextEdge, setContextEdge] = useState<string | null>(null);
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [edgeSource, setEdgeSource] = useState<string | null>(null);
 
@@ -73,6 +74,7 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
       if (evt.target.isNode && evt.target.isNode()) {
         evt.preventDefault();
         setContextNode(evt.target.id());
+        setContextEdge(null); // Clear edge context when node is right-clicked
         setContextMenuPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
         console.log('[useCytoscapeInteractions] Context menu opened for node', evt.target.id(), 'at', evt.originalEvent.clientX, evt.originalEvent.clientY);
       }
@@ -80,6 +82,24 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
     cy.on('cxttap', 'node', handleContextMenu);
     return () => {
       cy.off('cxttap', 'node', handleContextMenu);
+    };
+  }, [cy]);
+
+  // Custom right-click handler for edges
+  useEffect(() => {
+    if (!cy) return;
+    const handleEdgeContextMenu = (evt: cytoscape.EventObject) => {
+      if (evt.target.isEdge && evt.target.isEdge()) {
+        evt.preventDefault();
+        setContextEdge(evt.target.id());
+        setContextNode(null); // Clear node context when edge is right-clicked
+        setContextMenuPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
+        console.log('[useCytoscapeInteractions] Context menu opened for edge', evt.target.id(), 'at', evt.originalEvent.clientX, evt.originalEvent.clientY);
+      }
+    };
+    cy.on('cxttap', 'edge', handleEdgeContextMenu);
+    return () => {
+      cy.off('cxttap', 'edge', handleEdgeContextMenu);
     };
   }, [cy]);
 
@@ -113,6 +133,7 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
 
   return {
     contextNode,
+    contextEdge,
     contextMenuPos,
     edgeSource,
     setContextMenuPos,
