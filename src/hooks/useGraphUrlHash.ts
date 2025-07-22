@@ -1,11 +1,13 @@
 import { useEffect, useCallback } from 'react';
+import pako from 'pako';
 import type { GraphNode, GraphEdge } from '../types';
 
 export function useGraphUrlHash(nodes: GraphNode[], edges: GraphEdge[], setNodes: (nodes: GraphNode[]) => void, setEdges: (edges: GraphEdge[]) => void) {
   const encodeGraphState = useCallback((nodes: GraphNode[], edges: GraphEdge[]): string => {
     try {
       const json = JSON.stringify({ nodes, edges });
-      return btoa(encodeURIComponent(json));
+      const compressed = pako.gzip(json);
+      return btoa(String.fromCharCode.apply(null, Array.from(compressed)));
     } catch {
       return '';
     }
@@ -13,7 +15,8 @@ export function useGraphUrlHash(nodes: GraphNode[], edges: GraphEdge[], setNodes
 
   const decodeGraphState = useCallback((str: string): { nodes: GraphNode[]; edges: GraphEdge[] } | null => {
     try {
-      const json = decodeURIComponent(atob(str));
+      const compressed = Uint8Array.from(atob(str), c => c.charCodeAt(0));
+      const json = pako.inflate(compressed, { to: 'string' });
       const { nodes, edges } = JSON.parse(json);
       return { nodes, edges };
     } catch {

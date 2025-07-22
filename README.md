@@ -14,12 +14,8 @@
 
 ## TODO
 
-- [ ] **Light/Dark Mode:** Add automatic theme switching based on system preferences and manual toggle
 - [ ] **Visual Graph Editing:**
-  - [ ] Double-click canvas to add new nodes
-  - [ ] Drag between nodes to create edges  
-  - [ ] Right-click nodes/edges to edit properties or delete
-  - [ ] Drag nodes to reposition them
+  - [ ] Right-click nodes/edges to edit properties
 - [ ] **Export/Import**: Add support for exporting graphs to image (PNG/SVG) and importing from files.
 - [ ] **Better Error Handling**: Improve DOT parsing error messages and user feedback.
 - [ ] **Node/Edge Styling**: Allow users to customize node shapes, colors, and edge styles via UI.
