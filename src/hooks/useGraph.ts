@@ -1,26 +1,10 @@
 import { useState, useCallback } from 'react';
 import type { GraphNode, GraphEdge } from '../types';
 import { useGraphUrlHash } from './useGraphUrlHash';
-import { defaultNodes, defaultEdges } from '../utils/graphDefaults';
 
 export function useGraph() {
-  const initialGraph = (() => {
-    if (typeof window !== 'undefined' && window.location.hash.startsWith('#g=')) {
-      try {
-        const json = decodeURIComponent(atob(window.location.hash.slice(3)));
-        const { nodes, edges } = JSON.parse(json);
-        if (Array.isArray(nodes) && Array.isArray(edges)) {
-          return { nodes, edges };
-        }
-      } catch {
-        // ignore
-      }
-    }
-    return { nodes: defaultNodes, edges: defaultEdges };
-  })();
-
-  const [nodes, setNodes] = useState<GraphNode[]>(initialGraph.nodes);
-  const [edges, setEdges] = useState<GraphEdge[]>(initialGraph.edges);
+  const [nodes, setNodes] = useState<GraphNode[]>([]);
+  const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [selected, setSelected] = useState<{ type: 'node' | 'edge'; id: string } | null>(null);
 
   const addNode = useCallback((options?: { id?: string; label?: string; position?: { x: number; y: number } }) => {

@@ -23,6 +23,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     contextNode,
     contextEdge,
     contextMenuPos,
+    edgeSource,
     setContextMenuPos,
     setEdgeSource,
   } = useCytoscapeInteractions(cy);
@@ -116,6 +117,13 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
           ]}
           cy={setCy}
         />
+        {/* Edge creation mode indicator */}
+        {edgeSource && (
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-10 flex items-center gap-2">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span className="font-medium">Click on a target node to create an edge</span>
+          </div>
+        )}
         {/* Custom Context Menu for nodes and edges */}
         <ContextMenuRoot position={contextMenuPos} menuRef={contextMenuRef}>
           {(contextNode || contextEdge) && (

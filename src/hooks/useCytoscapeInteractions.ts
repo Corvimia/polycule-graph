@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type cytoscape from 'cytoscape';
 import { useGraphContext } from '../contexts/GraphContext/GraphContext';
 
@@ -8,6 +8,10 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
   const [contextEdge, setContextEdge] = useState<string | null>(null);
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [edgeSource, setEdgeSource] = useState<string | null>(null);
+  
+  // Long tap state
+  const longPressTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const longPressThreshold = 500; // 500ms for long press
 
   // Debug: log context menu position and edgeSource changes
   useEffect(() => {
@@ -16,6 +20,41 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
   useEffect(() => {
     console.log('[useCytoscapeInteractions] edgeSource changed:', edgeSource);
   }, [edgeSource]);
+
+  // Helper function to open context menu
+  const openContextMenu = (target: cytoscape.NodeSingular | cytoscape.EdgeSingular | null, event: cytoscape.EventObject) => {
+    event.preventDefault();
+    
+    // Get the correct coordinates for both mouse and touch events
+    let clientX: number, clientY: number;
+    
+    if (event.originalEvent instanceof TouchEvent && event.originalEvent.touches.length > 0) {
+      // Touch event - use the first touch point
+      clientX = event.originalEvent.touches[0].clientX;
+      clientY = event.originalEvent.touches[0].clientY;
+    } else {
+      // Mouse event
+      clientX = event.originalEvent.clientX;
+      clientY = event.originalEvent.clientY;
+    }
+    
+    if (target && target.isNode && target.isNode()) {
+      setContextNode(target.id());
+      setContextEdge(null);
+      console.log('[useCytoscapeInteractions] Context menu opened for node', target.id(), 'at', clientX, clientY);
+    } else if (target && target.isEdge && target.isEdge()) {
+      setContextEdge(target.id());
+      setContextNode(null);
+      console.log('[useCytoscapeInteractions] Context menu opened for edge', target.id(), 'at', clientX, clientY);
+    } else {
+      // Background context menu
+      setContextNode(null);
+      setContextEdge(null);
+      console.log('[useCytoscapeInteractions] Context menu opened for background at', clientX, clientY);
+    }
+    
+    setContextMenuPos({ x: clientX, y: clientY });
+  };
 
   // Node/edge/background selection and double-tap add node
   useEffect(() => {
@@ -67,16 +106,99 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
     };
   }, [cy, setSelected, addNode, nodes]);
 
+  // Long tap handlers for nodes, edges, and background
+  useEffect(() => {
+    if (!cy) return;
+
+    const handleNodeLongPressStart = (evt: cytoscape.EventObject) => {
+      const nodeId = evt.target.id();
+      const timer = setTimeout(() => {
+        openContextMenu(evt.target, evt);
+        longPressTimers.current.delete(nodeId);
+      }, longPressThreshold);
+      longPressTimers.current.set(nodeId, timer);
+    };
+
+    const handleNodeLongPressEnd = (evt: cytoscape.EventObject) => {
+      const nodeId = evt.target.id();
+      const timer = longPressTimers.current.get(nodeId);
+      if (timer) {
+        clearTimeout(timer);
+        longPressTimers.current.delete(nodeId);
+      }
+    };
+
+    const handleEdgeLongPressStart = (evt: cytoscape.EventObject) => {
+      const edgeId = evt.target.id();
+      const timer = setTimeout(() => {
+        openContextMenu(evt.target, evt);
+        longPressTimers.current.delete(edgeId);
+      }, longPressThreshold);
+      longPressTimers.current.set(edgeId, timer);
+    };
+
+    const handleEdgeLongPressEnd = (evt: cytoscape.EventObject) => {
+      const edgeId = evt.target.id();
+      const timer = longPressTimers.current.get(edgeId);
+      if (timer) {
+        clearTimeout(timer);
+        longPressTimers.current.delete(edgeId);
+      }
+    };
+
+    const handleBackgroundLongPressStart = (evt: cytoscape.EventObject) => {
+      // Check if long press is on background (not on node or edge)
+      if (typeof evt.target.data === 'function' && evt.target.data().id === undefined) {
+        const backgroundId = 'background';
+        const timer = setTimeout(() => {
+          openContextMenu(null, evt);
+          longPressTimers.current.delete(backgroundId);
+        }, longPressThreshold);
+        longPressTimers.current.set(backgroundId, timer);
+      }
+    };
+
+    const handleBackgroundLongPressEnd = (evt: cytoscape.EventObject) => {
+      // Check if long press end is on background
+      if (typeof evt.target.data === 'function' && evt.target.data().id === undefined) {
+        const backgroundId = 'background';
+        const timer = longPressTimers.current.get(backgroundId);
+        if (timer) {
+          clearTimeout(timer);
+          longPressTimers.current.delete(backgroundId);
+        }
+      }
+    };
+
+    // Add long press event listeners
+    cy.on('taphold', 'node', handleNodeLongPressStart);
+    cy.on('tapend', 'node', handleNodeLongPressEnd);
+    cy.on('taphold', 'edge', handleEdgeLongPressStart);
+    cy.on('tapend', 'edge', handleEdgeLongPressEnd);
+    cy.on('taphold', handleBackgroundLongPressStart);
+    cy.on('tapend', handleBackgroundLongPressEnd);
+
+    return () => {
+      // Clear any remaining timers
+      longPressTimers.current.forEach(timer => clearTimeout(timer));
+      longPressTimers.current.clear();
+
+      // Remove event listeners
+      cy.off('taphold', 'node', handleNodeLongPressStart);
+      cy.off('tapend', 'node', handleNodeLongPressEnd);
+      cy.off('taphold', 'edge', handleEdgeLongPressStart);
+      cy.off('tapend', 'edge', handleEdgeLongPressEnd);
+      cy.off('taphold', handleBackgroundLongPressStart);
+      cy.off('tapend', handleBackgroundLongPressEnd);
+    };
+  }, [cy]);
+
   // Custom right-click handler for nodes
   useEffect(() => {
     if (!cy) return;
     const handleContextMenu = (evt: cytoscape.EventObject) => {
       if (evt.target.isNode && evt.target.isNode()) {
-        evt.preventDefault();
-        setContextNode(evt.target.id());
-        setContextEdge(null); // Clear edge context when node is right-clicked
-        setContextMenuPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
-        console.log('[useCytoscapeInteractions] Context menu opened for node', evt.target.id(), 'at', evt.originalEvent.clientX, evt.originalEvent.clientY);
+        openContextMenu(evt.target, evt);
       }
     };
     cy.on('cxttap', 'node', handleContextMenu);
@@ -90,11 +212,7 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
     if (!cy) return;
     const handleEdgeContextMenu = (evt: cytoscape.EventObject) => {
       if (evt.target.isEdge && evt.target.isEdge()) {
-        evt.preventDefault();
-        setContextEdge(evt.target.id());
-        setContextNode(null); // Clear node context when edge is right-clicked
-        setContextMenuPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
-        console.log('[useCytoscapeInteractions] Context menu opened for edge', evt.target.id(), 'at', evt.originalEvent.clientX, evt.originalEvent.clientY);
+        openContextMenu(evt.target, evt);
       }
     };
     cy.on('cxttap', 'edge', handleEdgeContextMenu);
@@ -109,11 +227,7 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
     const handleBackgroundContextMenu = (evt: cytoscape.EventObject) => {
       // Check if right-click is on background (not on node or edge)
       if (typeof evt.target.data === 'function' && evt.target.data().id === undefined) {
-        evt.preventDefault();
-        setContextNode(null);
-        setContextEdge(null);
-        setContextMenuPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
-        console.log('[useCytoscapeInteractions] Context menu opened for background at', evt.originalEvent.clientX, evt.originalEvent.clientY);
+        openContextMenu(null, evt);
       }
     };
     cy.on('cxttap', handleBackgroundContextMenu);
