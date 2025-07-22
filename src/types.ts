@@ -3,7 +3,6 @@
 export interface GraphNodeData {
   label?: string;
   color?: string;
-  size?: number;
 }
 
 export interface GraphNode {
@@ -13,8 +12,6 @@ export interface GraphNode {
   type: string;
   style?: {
     background?: string;
-    width?: number;
-    height?: number;
   };
 }
 

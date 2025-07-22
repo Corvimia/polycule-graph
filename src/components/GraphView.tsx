@@ -30,11 +30,11 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
         name: 'cose',
         fit: true,
       });
-      
+
       layout.on('layoutstop', () => {
         setIsLayoutRunning(false);
       });
-      
+
       layout.run();
     }
   }, [cy]);
@@ -71,30 +71,53 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   // Run layout on initial load
   useEffect(() => {
     if (cy && nodes.length > 0) {
-      // Small delay to ensure the graph is fully rendered
-      const timer = setTimeout(() => {
-        triggerLayout();
-      }, 100);
-      return () => clearTimeout(timer);
+      triggerLayout();
     }
-  }, [cy, nodes.length, triggerLayout]);
+  }, [cy]); // Only run when cy is first set
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Press 'L' to trigger layout
-      if (event.key === 'l' || event.key === 'L') {
+      // Only handle layout shortcut if no input is active and we have a graph
+      if ((event.key === 'l' || event.key === 'L') && 
+          event.target instanceof Element && 
+          !event.target.closest('input') && 
+          !event.target.closest('textarea') && 
+          !event.target.closest('[contenteditable]') &&
+          cy && nodes.length > 0) {
+        
         event.preventDefault();
+        console.log('Triggering layout from global shortcut...');
         triggerLayout();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [triggerLayout]);
+  }, [triggerLayout, cy, nodes.length]);
 
   return (
-    <main className={`flex-1 flex flex-col items-stretch relative bg-neutral-100 dark:bg-neutral-900 min-w-0 min-h-0 overflow-hidden ${!isMobile && sidebarOpen ? 'ml-80' : ''} transition-all duration-200`} style={{ minHeight: '60vh', height: '100%' }}>
+    <main 
+      className={`flex-1 flex flex-col items-stretch relative bg-neutral-100 dark:bg-neutral-900 min-w-0 min-h-0 overflow-hidden ${!isMobile && sidebarOpen ? 'ml-80' : ''} transition-all duration-200`} 
+      style={{ minHeight: '60vh', height: '100%' }}
+      tabIndex={0}
+      onClick={(e) => {
+        // Focus the main container when clicked
+        if (e.target === e.currentTarget) {
+          e.currentTarget.focus();
+        }
+      }}
+      onKeyDown={(e) => {
+        if ((e.key === 'l' || e.key === 'L') && 
+            e.target instanceof Element && 
+            !e.target.closest('input') && 
+            !e.target.closest('textarea')) {
+          e.preventDefault();
+          console.log('Layout triggered from main container');
+          triggerLayout();
+        }
+      }}
+    >
       <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', justifyContent: 'center', minHeight: '60vh', height: '100%', minWidth: 0 }}>
         <CytoscapeComponent
           elements={[
@@ -107,7 +130,6 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                   id: n.id,
                   label,
                   color: n.data.color ?? stringToColor(label), // hash-based color
-                  size: n.data.size ?? 48,
                 }
               }
             }),
@@ -125,8 +147,12 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
             }))
           ]}
           style={{ width: '80vw', height: '100%', minHeight: 400, background: dark ? '#23272f' : '#fff', borderRadius: 12, boxShadow: '0 2px 12px #0001', minWidth: 0 }}
-          layout={{ 
-            name: 'cose', 
+          container={{ className: 'cytoscape-container' }}
+          cy={(cyInstance: cytoscape.Core) => {
+            setCy(cyInstance);
+          }}
+          layout={{
+            name: 'cose',
             fit: true,
             padding: 100,
             nodeDimensionsIncludeLabels: true,
@@ -154,16 +180,20 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 'text-halign': 'center',
                 'font-size': 22,
                 'font-weight': 700,
-                'width': 'data(size)',
-                'height': 'data(size)',
                 'border-width': 3,
                 'border-color': '#fff4',
                 'border-opacity': 1,
                 'border-style': 'solid',
                 'text-shadow': '0 2px 8px #000a',
                 'box-shadow': '0 4px 24px #0002',
-                'shape': 'ellipse', // changed from 'roundrectangle' to 'ellipse' for round nodes
+                'shape': 'roundrectangle',
                 'background-opacity': 1,
+                'text-wrap': 'wrap',
+                'text-max-width': '200px',
+                'width': 'label',
+                'height': 'label',
+                'padding': '10px',
+                'padding-relative-to': 'width',
               },
             },
             {
@@ -188,7 +218,6 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
               },
             },
           ]}
-          cy={setCy}
         />
         {/* Edge creation mode indicator */}
         {edgeSource && (
@@ -197,7 +226,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
             <span className="font-medium">Click on a target node to create an edge</span>
           </div>
         )}
-        
+
         {/* Layout status indicator */}
         {isLayoutRunning && (
           <div className="absolute top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-10 flex items-center gap-2">
@@ -205,7 +234,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
             <span className="font-medium">Layout running...</span>
           </div>
         )}
-        
+
         {/* Layout help indicator */}
         {!isLayoutRunning && nodes.length > 0 && (
           <div className="absolute bottom-4 right-4 bg-gray-500 text-white px-3 py-1 rounded-lg shadow-lg z-10 text-sm opacity-75">
@@ -290,13 +319,13 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                       const minDistance = 150; // Minimum distance between nodes
                       let adjustedX = cyX;
                       let adjustedY = cyY;
-                      
+
                       for (const node of nodes) {
                         if (node.position) {
                           const dx = node.position.x - cyX;
                           const dy = node.position.y - cyY;
                           const distance = Math.sqrt(dx * dx + dy * dy);
-                          
+
                           if (distance < minDistance) {
                             // Move the new node away from the existing one
                             const angle = Math.atan2(dy, dx);
@@ -330,7 +359,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
             </ContextMenu>
           )}
         </ContextMenuRoot>
-        
+
         {/* Rename Node Dialog */}
         {renamingNode && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

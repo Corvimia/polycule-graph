@@ -3,7 +3,7 @@ import type cytoscape from 'cytoscape';
 import { useGraphContext } from '../contexts/GraphContext/GraphContext';
 
 export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
-  const { setSelected, addNode, addEdge, nodes, updateNode } = useGraphContext();
+  const { setSelected, addNode, addEdge, nodes } = useGraphContext();
   const [contextNode, setContextNode] = useState<string | null>(null);
   const [contextEdge, setContextEdge] = useState<string | null>(null);
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);

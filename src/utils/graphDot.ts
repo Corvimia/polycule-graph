@@ -6,9 +6,8 @@ export function toDot(nodes: GraphNode[], edges: GraphEdge[]): string {
   for (const node of nodes) {
     const label = node.data?.label;
     const color = node.data?.color ? `color="${node.data.color}"` : '';
-    const size = node.data?.size ? `width=${(node.data.size/40).toFixed(2)}, height=${(node.data.size/40).toFixed(2)}, fixedsize=true` : '';
     const labelAttr = label && label !== node.id ? `label="${label}"` : '';
-    const attrs = [labelAttr, color, size].filter(Boolean).join(', ');
+    const attrs = [labelAttr, color].filter(Boolean).join(', ');
     dot += `  "${node.id}"${attrs ? ` [${attrs}]` : ''};\n`;
   }
   for (const edge of edges) {
@@ -50,12 +49,10 @@ export function dotAstToCytoscape(ast: DotAst): { nodes: GraphNode[]; edges: Gra
           data: {
             ...(label ? { label } : {}),
             ...(attrs.color ? { color: attrs.color } : {}),
-            ...(attrs.width ? { size: Number(attrs.width) * 40 } : {}),
           },
           type: 'default',
           style: {
             ...(attrs.color ? { background: attrs.color } : {}),
-            ...(attrs.width ? { width: Number(attrs.width) * 40, height: Number(attrs.width) * 40 } : {}),
           },
         });
       } else if (child.type === 'edge_stmt') {

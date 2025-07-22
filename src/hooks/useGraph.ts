@@ -40,7 +40,7 @@ export function useGraph() {
     setNodes(nds => nds.map(n => n.id === id ? {
       ...n,
       data: { ...n.data, ...data },
-      style: { ...n.style, background: data.color ?? n.data.color, width: data.size ?? n.data.size, height: data.size ?? n.data.size },
+      style: { ...n.style, background: data.color ?? n.data.color },
     } : n));
   }, []);
   const updateEdge = useCallback((id: string, data: Partial<GraphEdge['data']>) => {
