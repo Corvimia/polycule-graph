@@ -15,7 +15,7 @@ interface GraphContextType {
   deleteEdge: (edgeId: string) => void;
   setNodes: (nodes: GraphNode[]) => void;
   setEdges: (edges: GraphEdge[]) => void;
-  copyLink: () => void;
+  copyLink: () => Promise<boolean>;
 }
 
 export const GraphContext = createContext<GraphContextType | undefined>(undefined);

@@ -81,8 +81,14 @@ export function useGraph() {
 
   useGraphUrlHash(nodes, edges, setNodes, setEdges);
 
-  const copyLink = useCallback(() => {
-    navigator.clipboard.writeText(window.location.href);
+  const copyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      return true;
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      return false;
+    }
   }, []);
 
   return {
