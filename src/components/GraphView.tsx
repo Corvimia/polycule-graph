@@ -1,5 +1,5 @@
 import CytoscapeComponent from 'react-cytoscapejs';
-import { Plus, Trash2, Minus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useGraphContext } from '../contexts/GraphContext/GraphContext';
 import { useTheme } from '../contexts/ThemeContext/ThemeContext';
 import type cytoscape from 'cytoscape';
@@ -23,7 +23,6 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     contextNode,
     contextEdge,
     contextMenuPos,
-    edgeSource,
     setContextMenuPos,
     setEdgeSource,
   } = useCytoscapeInteractions(cy);

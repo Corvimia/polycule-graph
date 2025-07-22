@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import type cytoscape from 'cytoscape';
 import { useGraphContext } from '../contexts/GraphContext/GraphContext';
 
