@@ -48,54 +48,6 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background: #181a20;
-  color: #f3f4f6;
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  transition: background 0.3s, color 0.3s;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  font-weight: 700;
-  color: #fff;
-}
-
-a {
-  font-weight: 500;
-  color: #a5b4fc;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-a:hover {
-  color: #818cf8;
-}
-
-button {
-  border-radius: 10px;
-  border: none;
-  padding: 0.7em 1.4em;
-  font-size: 1em;
-  font-weight: 600;
-  font-family: inherit;
-  background-color: #6366f1;
-  color: #fff;
-  cursor: pointer;
-  box-shadow: 0 2px 8px #0002;
-  transition: background 0.2s, box-shadow 0.2s;
-}
-button:hover {
-  background-color: #818cf8;
-  box-shadow: 0 4px 16px #0003;
-}
-button:focus,
-button:focus-visible {
-  outline: 3px solid #a5b4fc;
-}
-
 /* Subtle grid background for main area */
 .bg-dot {
   background-color: #181a20;

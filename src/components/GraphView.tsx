@@ -1,35 +1,17 @@
 import CytoscapeComponent from 'react-cytoscapejs';
+import { Plus, Trash2, Minus } from 'lucide-react';
 import { useGraphContext } from '../contexts/GraphContext/GraphContext';
 import { useTheme } from '../contexts/ThemeContext/ThemeContext';
 import type cytoscape from 'cytoscape';
 import { stringToColor } from '../utils/graphDot';
 import { useState, useRef, useEffect } from 'react';
 import { useCytoscapeInteractions } from '../hooks/useCytoscapeInteractions';
+import { ContextMenu, ContextMenuItem, ContextMenuRoot } from './ui/context-menu';
 
 interface GraphViewProps {
   sidebarOpen: boolean;
   isMobile: boolean;
 }
-
-// Simple Card component for the menu container
-const Card = ({ children, className = "", ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg backdrop-blur-sm ${className}`}
-    {...props}
-  >
-    {children}
-  </div>
-);
-
-// Simple Button component for menu items
-const Button = ({ children, className = "", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-  <button
-    className={`w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${className}`}
-    {...props}
-  >
-    {children}
-  </button>
-);
 
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const { nodes, edges, deleteNode, deleteEdge, addNode } = useGraphContext();
@@ -136,82 +118,68 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
           cy={setCy}
         />
         {/* Custom Context Menu for nodes and edges */}
-        {contextMenuPos && (contextNode || contextEdge) && (
-          <div
-            ref={contextMenuRef}
-            style={{ 
-              position: 'fixed', 
-              left: contextMenuPos.x, 
-              top: contextMenuPos.y, 
-              zIndex: 1000 
-            }}
-            className="animate-in fade-in-0 zoom-in-95 duration-200"
-          >
-            <Card className="min-w-[140px] p-1">
+        <ContextMenuRoot position={contextMenuPos} menuRef={contextMenuRef}>
+          {(contextNode || contextEdge) && (
+            <ContextMenu>
               {/* Node context menu */}
               {contextNode && (
                 <>
-                  <Button
+                  <ContextMenuItem
+                    icon={Plus}
                     onClick={() => {
                       setEdgeSource(contextNode);
                       setContextMenuPos(null);
                     }}
                   >
                     New edge
-                  </Button>
-                  <Button
-                    className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    icon={Trash2}
+                    className="text-red-400 hover:bg-red-900/20"
                     onClick={() => {
                       deleteNode(contextNode);
                       setContextMenuPos(null);
                     }}
                   >
                     Delete
-                  </Button>
+                  </ContextMenuItem>
                 </>
               )}
               {/* Edge context menu */}
               {contextEdge && (
-                <Button
-                  className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
+                <ContextMenuItem
+                  icon={Trash2}
+                  className="text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
                   onClick={() => {
                     deleteEdge(contextEdge);
                     setContextMenuPos(null);
                   }}
                 >
                   Delete
-                </Button>
+                </ContextMenuItem>
               )}
-            </Card>
-          </div>
-        )}
+            </ContextMenu>
+          )}
+        </ContextMenuRoot>
         {/* Background context menu for new node */}
-        {contextMenuPos && !contextNode && !contextEdge && (
-          <div
-            ref={contextMenuRef}
-            style={{ 
-              position: 'fixed', 
-              left: contextMenuPos.x, 
-              top: contextMenuPos.y, 
-              zIndex: 1000 
-            }}
-            className="animate-in fade-in-0 zoom-in-95 duration-200"
-          >
-            <Card className="min-w-[140px] p-1">
-              <Button
+        <ContextMenuRoot position={contextMenuPos} menuRef={contextMenuRef}>
+          {!contextNode && !contextEdge && (
+            <ContextMenu>
+              <ContextMenuItem
+                icon={Plus}
                 onClick={() => {
                   // Convert screen coordinates to Cytoscape coordinates
-                  if (cy) {
+                  if (cy && contextMenuPos) {
                     const pos = cy.pan() || { x: 0, y: 0 };
                     const zoom = cy.zoom() || 1;
                     const container = cy.container();
-                    if (container) {
+                    if (container) { // Null check for container
                       const rect = container.getBoundingClientRect();
-                      
+
                       // Calculate the position in Cytoscape coordinates
                       const cyX = (contextMenuPos.x - rect.left - pos.x) / zoom;
                       const cyY = (contextMenuPos.y - rect.top - pos.y) / zoom;
-                      
+
                       // Find first unused letter
                       const usedLabels = new Set(nodes.map(n => n.id));
                       const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -231,17 +199,11 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 }}
               >
                 New node
-              </Button>
-            </Card>
-          </div>
-        )}
+              </ContextMenuItem>
+            </ContextMenu>
+          )}
+        </ContextMenuRoot>
       </div>
-      {/* Optionally, show a hint when in edge creation mode */}
-      {edgeSource && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-4 py-2 rounded shadow-lg z-50">
-          Click another node to create an edge from <b>{edgeSource}</b>
-        </div>
-      )}
     </main>
   );
 } 
