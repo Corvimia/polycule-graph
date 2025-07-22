@@ -103,6 +103,25 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
     };
   }, [cy]);
 
+  // Custom right-click handler for background (empty space)
+  useEffect(() => {
+    if (!cy) return;
+    const handleBackgroundContextMenu = (evt: cytoscape.EventObject) => {
+      // Check if right-click is on background (not on node or edge)
+      if (typeof evt.target.data === 'function' && evt.target.data().id === undefined) {
+        evt.preventDefault();
+        setContextNode(null);
+        setContextEdge(null);
+        setContextMenuPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
+        console.log('[useCytoscapeInteractions] Context menu opened for background at', evt.originalEvent.clientX, evt.originalEvent.clientY);
+      }
+    };
+    cy.on('cxttap', handleBackgroundContextMenu);
+    return () => {
+      cy.off('cxttap', handleBackgroundContextMenu);
+    };
+  }, [cy]);
+
   // Edge creation mode: listen for next node tap
   useEffect(() => {
     if (!cy || !edgeSource) return;

@@ -32,7 +32,7 @@ const Button = ({ children, className = "", ...props }: React.ButtonHTMLAttribut
 );
 
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
-  const { nodes, edges, deleteNode, deleteEdge } = useGraphContext();
+  const { nodes, edges, deleteNode, deleteEdge, addNode } = useGraphContext();
   const { dark } = useTheme();
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -182,6 +182,56 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                   Delete
                 </Button>
               )}
+            </Card>
+          </div>
+        )}
+        {/* Background context menu for new node */}
+        {contextMenuPos && !contextNode && !contextEdge && (
+          <div
+            ref={contextMenuRef}
+            style={{ 
+              position: 'fixed', 
+              left: contextMenuPos.x, 
+              top: contextMenuPos.y, 
+              zIndex: 1000 
+            }}
+            className="animate-in fade-in-0 zoom-in-95 duration-200"
+          >
+            <Card className="min-w-[140px] p-1">
+              <Button
+                onClick={() => {
+                  // Convert screen coordinates to Cytoscape coordinates
+                  if (cy) {
+                    const pos = cy.pan() || { x: 0, y: 0 };
+                    const zoom = cy.zoom() || 1;
+                    const container = cy.container();
+                    if (container) {
+                      const rect = container.getBoundingClientRect();
+                      
+                      // Calculate the position in Cytoscape coordinates
+                      const cyX = (contextMenuPos.x - rect.left - pos.x) / zoom;
+                      const cyY = (contextMenuPos.y - rect.top - pos.y) / zoom;
+                      
+                      // Find first unused letter
+                      const usedLabels = new Set(nodes.map(n => n.id));
+                      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                      let letter = null;
+                      for (let i = 0; i < alphabet.length; ++i) {
+                        if (!usedLabels.has(alphabet[i])) {
+                          letter = alphabet[i];
+                          break;
+                        }
+                      }
+                      if (letter) {
+                        addNode({ id: letter, position: { x: cyX, y: cyY } });
+                      }
+                    }
+                  }
+                  setContextMenuPos(null);
+                }}
+              >
+                New node
+              </Button>
             </Card>
           </div>
         )}
