@@ -3,11 +3,12 @@ import type cytoscape from 'cytoscape';
 import { useGraphContext } from '../contexts/GraphContext/GraphContext';
 
 export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
-  const { setSelected, addNode, addEdge, nodes } = useGraphContext();
+  const { setSelected, addNode, addEdge, nodes, updateNode } = useGraphContext();
   const [contextNode, setContextNode] = useState<string | null>(null);
   const [contextEdge, setContextEdge] = useState<string | null>(null);
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [edgeSource, setEdgeSource] = useState<string | null>(null);
+  const [renamingNode, setRenamingNode] = useState<string | null>(null);
   
   // Long tap state
   const longPressTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
@@ -248,7 +249,9 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
     contextEdge,
     contextMenuPos,
     edgeSource,
+    renamingNode,
     setContextMenuPos,
     setEdgeSource,
+    setRenamingNode,
   };
 } 

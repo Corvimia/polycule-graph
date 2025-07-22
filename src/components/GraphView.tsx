@@ -1,5 +1,5 @@
 import CytoscapeComponent from 'react-cytoscapejs';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit3 } from 'lucide-react';
 import { useGraphContext } from '../contexts/GraphContext/GraphContext';
 import { useTheme } from '../contexts/ThemeContext/ThemeContext';
 import type cytoscape from 'cytoscape';
@@ -14,11 +14,13 @@ interface GraphViewProps {
 }
 
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
-  const { nodes, edges, deleteNode, deleteEdge, addNode } = useGraphContext();
+  const { nodes, edges, deleteNode, deleteEdge, addNode, updateNode } = useGraphContext();
   const { dark } = useTheme();
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const [isLayoutRunning, setIsLayoutRunning] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
 
   // Function to manually trigger layout
   const triggerLayout = useCallback(() => {
@@ -42,8 +44,10 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     contextEdge,
     contextMenuPos,
     edgeSource,
+    renamingNode,
     setContextMenuPos,
     setEdgeSource,
+    setRenamingNode,
   } = useCytoscapeInteractions(cy);
 
   // Close context menu on click elsewhere
@@ -54,6 +58,13 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
       return () => window.removeEventListener('click', handleClick);
     }
   }, [contextMenuPos, setContextMenuPos]);
+
+  // Reset rename value when dialog closes
+  useEffect(() => {
+    if (!renamingNode) {
+      setRenameValue('');
+    }
+  }, [renamingNode]);
 
 
 
@@ -218,6 +229,17 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     New edge
                   </ContextMenuItem>
                   <ContextMenuItem
+                    icon={Edit3}
+                    onClick={() => {
+                      const node = nodes.find(n => n.id === contextNode);
+                      setRenameValue(node?.data.label || contextNode);
+                      setRenamingNode(contextNode);
+                      setContextMenuPos(null);
+                    }}
+                  >
+                    Rename
+                  </ContextMenuItem>
+                  <ContextMenuItem
                     icon={Trash2}
                     className="text-red-400 hover:bg-red-900/20"
                     onClick={() => {
@@ -308,6 +330,56 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
             </ContextMenu>
           )}
         </ContextMenuRoot>
+        
+        {/* Rename Node Dialog */}
+        {renamingNode && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl max-w-sm w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+                Rename Node
+              </h3>
+              <input
+                ref={renameInputRef}
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const newLabel = (e.target as HTMLInputElement).value.trim();
+                    if (newLabel) {
+                      updateNode(renamingNode, { label: newLabel });
+                    }
+                    setRenamingNode(null);
+                  } else if (e.key === 'Escape') {
+                    setRenamingNode(null);
+                  }
+                }}
+              />
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => setRenamingNode(null)}
+                  className="flex-1 px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const newLabel = renameValue.trim();
+                    if (newLabel) {
+                      updateNode(renamingNode, { label: newLabel });
+                    }
+                    setRenamingNode(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                  Rename
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
