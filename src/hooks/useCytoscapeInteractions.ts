@@ -167,10 +167,12 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
     cy.on('taphold', handleBackgroundLongPressStart);
     cy.on('tapend', handleBackgroundLongPressEnd);
 
+    const currentTimer = longPressTimers.current;
+
     return () => {
       // Clear any remaining timers
-      longPressTimers.current.forEach(timer => clearTimeout(timer));
-      longPressTimers.current.clear();
+      currentTimer.forEach(timer => clearTimeout(timer));
+      currentTimer.clear();
 
       // Remove event listeners
       cy.off('taphold', 'node', handleNodeLongPressStart);

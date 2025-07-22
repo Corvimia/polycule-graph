@@ -28,7 +28,7 @@ export function useGraphUrlHash(nodes: GraphNode[], edges: GraphEdge[], setNodes
       const ast = dotparser(dotContent) as DotAst;
       const { nodes, edges } = dotAstToCytoscape(ast);
       return { nodes, edges };
-    } catch (error) {
+    } catch {
       return null;
     }
   }, []);
