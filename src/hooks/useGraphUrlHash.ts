@@ -1,15 +1,18 @@
 import { useEffect, useCallback, useState } from 'react';
 import pako from 'pako';
-import type { GraphNode, GraphEdge } from '../types';
+import type { GraphNode, GraphEdge, DotAst } from '../types';
 import { defaultNodes, defaultEdges } from '../utils/graphDefaults';
+import { toDot, dotAstToCytoscape } from '../utils/graphDot';
+import dotparser from 'dotparser';
 
 export function useGraphUrlHash(nodes: GraphNode[], edges: GraphEdge[], setNodes: (nodes: GraphNode[]) => void, setEdges: (edges: GraphEdge[]) => void) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const encodeGraphState = useCallback((nodes: GraphNode[], edges: GraphEdge[]): string => {
     try {
-      const json = JSON.stringify({ nodes, edges });
-      const compressed = pako.gzip(json);
+      // Convert to DOT format instead of encoding full arrays
+      const dotContent = toDot(nodes, edges);
+      const compressed = pako.gzip(dotContent);
       return btoa(String.fromCharCode.apply(null, Array.from(compressed)));
     } catch {
       return '';
@@ -18,14 +21,14 @@ export function useGraphUrlHash(nodes: GraphNode[], edges: GraphEdge[], setNodes
 
   const decodeGraphState = useCallback((str: string): { nodes: GraphNode[]; edges: GraphEdge[] } | null => {
     try {
-      console.log('[useGraphUrlHash] Attempting to decode:', str);
       const compressed = Uint8Array.from(atob(str), c => c.charCodeAt(0));
-      const json = pako.inflate(compressed, { to: 'string' });
-      const { nodes, edges } = JSON.parse(json);
-      console.log('[useGraphUrlHash] Successfully decoded:', { nodes: nodes.length, edges: edges.length });
+      const dotContent = pako.inflate(compressed, { to: 'string' });
+      
+      // Parse DOT content back to graph data
+      const ast = dotparser(dotContent) as DotAst;
+      const { nodes, edges } = dotAstToCytoscape(ast);
       return { nodes, edges };
     } catch (error) {
-      console.error('[useGraphUrlHash] Decode error:', error);
       return null;
     }
   }, []);
@@ -42,21 +45,16 @@ export function useGraphUrlHash(nodes: GraphNode[], edges: GraphEdge[], setNodes
 
   useEffect(() => {
     const loadGraphFromHash = () => {
-      console.log('[useGraphUrlHash] loadGraphFromHash called, hash:', window.location.hash);
       if (window.location.hash.startsWith('#g=')) {
-        console.log('[useGraphUrlHash] Found graph hash, attempting to decode...');
         const state = decodeGraphState(window.location.hash.slice(3));
         if (state && Array.isArray(state.nodes) && Array.isArray(state.edges)) {
-          console.log('[useGraphUrlHash] Setting nodes and edges:', { nodes: state.nodes.length, edges: state.edges.length });
           setNodes(state.nodes);
           setEdges(state.edges);
         } else {
-          console.log('[useGraphUrlHash] Failed to decode or invalid state, loading defaults');
           setNodes(defaultNodes);
           setEdges(defaultEdges);
         }
       } else {
-        console.log('[useGraphUrlHash] No graph hash found, loading defaults');
         setNodes(defaultNodes);
         setEdges(defaultEdges);
       }
@@ -65,12 +63,10 @@ export function useGraphUrlHash(nodes: GraphNode[], edges: GraphEdge[], setNodes
     };
 
     // Load graph state on initial mount (for page refresh)
-    console.log('[useGraphUrlHash] Initial mount, calling loadGraphFromHash');
     loadGraphFromHash();
 
     // Listen for hash changes
     const onHashChange = () => {
-      console.log('[useGraphUrlHash] Hash changed, calling loadGraphFromHash');
       loadGraphFromHash();
     };
     window.addEventListener('hashchange', onHashChange);
