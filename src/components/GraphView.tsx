@@ -1,5 +1,5 @@
 import CytoscapeComponent from 'react-cytoscapejs';
-import { Plus, Trash2, Edit3 } from 'lucide-react';
+import { Plus, Trash2, Edit3, RotateCcw } from 'lucide-react';
 import { useGraphContext } from '../contexts/GraphContext/GraphContext';
 import { useTheme } from '../contexts/ThemeContext/ThemeContext';
 import type cytoscape from 'cytoscape';
@@ -224,6 +224,19 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
             Press 'L' to re-layout
           </div>
         )}
+
+        {/* Mobile layout trigger button */}
+        {isMobile && nodes.length > 0 && (
+          <button
+            onClick={triggerLayout}
+            disabled={isLayoutRunning}
+            className="absolute bottom-4 left-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white p-3 rounded-full shadow-lg z-10 transition-colors duration-200"
+            title="Re-layout graph"
+          >
+            <RotateCcw className={`w-5 h-5 ${isLayoutRunning ? 'animate-spin' : ''}`} />
+          </button>
+        )}
+
         {/* Custom Context Menu for nodes and edges */}
         <ContextMenuRoot position={contextMenuPos} menuRef={contextMenuRef}>
           {(contextNode || contextEdge) && (
