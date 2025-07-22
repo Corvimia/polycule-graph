@@ -13,14 +13,6 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
   const longPressTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const longPressThreshold = 500; // 500ms for long press
 
-  // Debug: log context menu position and edgeSource changes
-  useEffect(() => {
-    console.log('[useCytoscapeInteractions] contextMenuPos changed:', contextMenuPos);
-  }, [contextMenuPos]);
-  useEffect(() => {
-    console.log('[useCytoscapeInteractions] edgeSource changed:', edgeSource);
-  }, [edgeSource]);
-
   // Helper function to open context menu
   const openContextMenu = (target: cytoscape.NodeSingular | cytoscape.EdgeSingular | null, event: cytoscape.EventObject) => {
     event.preventDefault();
@@ -41,16 +33,13 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
     if (target && target.isNode && target.isNode()) {
       setContextNode(target.id());
       setContextEdge(null);
-      console.log('[useCytoscapeInteractions] Context menu opened for node', target.id(), 'at', clientX, clientY);
     } else if (target && target.isEdge && target.isEdge()) {
       setContextEdge(target.id());
       setContextNode(null);
-      console.log('[useCytoscapeInteractions] Context menu opened for edge', target.id(), 'at', clientX, clientY);
     } else {
       // Background context menu
       setContextNode(null);
       setContextEdge(null);
-      console.log('[useCytoscapeInteractions] Context menu opened for background at', clientX, clientY);
     }
     
     setContextMenuPos({ x: clientX, y: clientY });
@@ -239,30 +228,18 @@ export function useCytoscapeInteractions(cy: cytoscape.Core | undefined) {
   // Edge creation mode: listen for next node tap
   useEffect(() => {
     if (!cy || !edgeSource) return;
-    console.log('[useCytoscapeInteractions] Edge creation mode started from node', edgeSource);
     const handleNodeTap = (evt: cytoscape.EventObject) => {
       const targetId = evt.target.id();
       if (targetId && targetId !== edgeSource) {
         addEdge(edgeSource, targetId);
-        console.log('[useCytoscapeInteractions] Edge created from', edgeSource, 'to', targetId);
-      } else {
-        console.log('[useCytoscapeInteractions] Edge creation cancelled or same node clicked');
       }
       setEdgeSource(null);
-      console.log('[useCytoscapeInteractions] Edge creation mode exited');
     };
     cy.on('tap', 'node', handleNodeTap);
     return () => {
       cy.off('tap', 'node', handleNodeTap);
     };
   }, [cy, edgeSource, addEdge]);
-
-  // Debug: log when context menu is closed
-  useEffect(() => {
-    if (contextMenuPos === null) {
-      console.log('[useCytoscapeInteractions] Context menu closed');
-    }
-  }, [contextMenuPos]);
 
   return {
     contextNode,
