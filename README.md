@@ -16,6 +16,7 @@
 
 - [ ] **Visual Graph Editing:**
   - [ ] Right-click nodes/edges to edit properties
+  - [ ] New nodes should pick from popular trans girl names
 - [ ] **Export/Import**: Add support for exporting graphs to image (PNG/SVG) and importing from files.
 - [ ] **Better Error Handling**: Improve DOT parsing error messages and user feedback.
 - [ ] **Node/Edge Styling**: Allow users to customize node shapes, colors, and edge styles via UI.
