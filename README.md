@@ -12,6 +12,10 @@
 - Real-time graph rendering with Cytoscape.js.
 - Copy a shareable link to your current graph state.
 
+## Contributing
+
+For local development, install dependencies with `pnpm install`. In CI (GitHub Actions), use `pnpm install --frozen-lockfile` to ensure the lockfile stays consistent. To speed up CI runs, cache the pnpm store directory (use `pnpm store path` to get the path, or set `PNPM_STORE_PATH` explicitly in the workflow).
+
 ## TODO
 
 - [ ] **Visual Graph Editing:**
