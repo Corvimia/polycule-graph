@@ -34,3 +34,6 @@
 ## Configuration & Environment
 - Use the Node version in `.nvmrc` and install dependencies with `pnpm`.
 - Husky hooks are enabled; pre-commit/pre-push hooks currently run `pnpm run precommit`.
+
+## Issue References
+- When the user mentions issue and a number (e.g., "issue 9" or "issue #8"), look on the remote repo's issue list: https://github.com/Corvimia/polycule-graph/issues
