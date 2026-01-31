@@ -24,6 +24,9 @@
 ## Commit & Pull Request Guidelines
 - Commit history follows Conventional Commits (e.g., `feat: …`, `fix: …`, `chore: …`).
 - PRs should include a concise description, testing notes (commands run), and screenshots for UI changes.
+- Branch naming: `<type>/issue-<N>-<short-descriptor>` where `<type>` is a Conventional Commit type (e.g., `feat`, `fix`, `chore`, `docs`).
+- PR titles should follow Conventional Commits.
+- Before opening a PR, run `pnpm run prepush` (type-check + lint) and report results in the PR notes.
 
 ## Architecture Overview
 - The app is a single-page Vite/React UI with a DOT editor and a Cytoscape graph view.
