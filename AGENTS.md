@@ -25,7 +25,8 @@
 - Commit history follows Conventional Commits (e.g., `feat: …`, `fix: …`, `chore: …`).
 - PRs should include a concise description, testing notes (commands run), and screenshots for UI changes.
 - Branch naming: `<type>/issue-<N>-<short-descriptor>` where `<type>` is a Conventional Commit type (e.g., `feat`, `fix`, `chore`, `docs`).
-- PR titles should follow Conventional Commits.
+- PR titles should follow Conventional Commits. When creating a PR for an issue, include the issue number in the title so GitHub auto-closes it on merge.
+- Include `closes #N` in the PR description for clarity.
 - Before opening a PR, run `pnpm run prepush` (type-check + lint) and report results in the PR notes.
 
 ## Architecture Overview
@@ -40,3 +41,4 @@
 
 ## Issue References
 - When the user mentions issue and a number (e.g., "issue 9" or "issue #8"), look on the remote repo's issue list: https://github.com/Corvimia/polycule-graph/issues
+- When looking up anything on GitHub, use the `gh` CLI.
