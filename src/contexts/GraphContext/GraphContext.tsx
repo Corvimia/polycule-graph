@@ -9,6 +9,7 @@ interface GraphContextType {
   addNode: (options?: { id?: string; label?: string; position?: { x: number; y: number } }) => void;
   addEdge: (source: string, target: string) => void;
   updateNode: (id: string, data: Partial<GraphNode['data']>) => void;
+  renameNode: (id: string, nextId: string, label: string) => void;
   updateEdge: (id: string, data: Partial<GraphEdge['data']>) => void;
   deleteSelected: () => void;
   deleteNode: (nodeId: string) => void;

@@ -15,13 +15,14 @@ interface GraphViewProps {
 }
 
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
-  const { nodes, edges, deleteNode, deleteEdge, addNode, updateNode } = useGraphContext();
+  const { nodes, edges, deleteNode, deleteEdge, addNode, renameNode } = useGraphContext();
   const { dark } = useTheme();
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const [isLayoutRunning, setIsLayoutRunning] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+  const sanitizeNodeId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
   // Function to manually trigger layout
   const triggerLayout = useCallback(() => {
@@ -50,6 +51,16 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     setEdgeSource,
     setRenamingNode,
   } = useCytoscapeInteractions(cy);
+  const sanitizedRenameId = sanitizeNodeId(renameValue);
+  const hasDuplicateId = !!renamingNode
+    && sanitizedRenameId.length > 0
+    && sanitizedRenameId !== renamingNode
+    && nodes.some(n => n.id === sanitizedRenameId);
+  const renameError = sanitizedRenameId.length === 0
+    ? 'ID must include at least one letter or number.'
+    : hasDuplicateId
+      ? 'ID already exists.'
+      : '';
 
   // Close context menu on click elsewhere
   useEffect(() => {
@@ -72,7 +83,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     if (cy && nodes.length > 0) {
       triggerLayout();
     }
-  }, [cy]); // Only run when cy is first set
+  }, [cy, nodes.length, triggerLayout]); // Only run when cy is first set
 
   // Keyboard shortcuts using react-hotkeys-hook
   useHotkeys('l', (e) => {
@@ -372,16 +383,23 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    const newLabel = (e.target as HTMLInputElement).value.trim();
-                    if (newLabel) {
-                      updateNode(renamingNode, { label: newLabel });
-                    }
+                    if (!renamingNode || renameError) return;
+                    const newLabel = (e.target as HTMLInputElement).value;
+                    renameNode(renamingNode, sanitizedRenameId, newLabel);
                     setRenamingNode(null);
                   } else if (e.key === 'Escape') {
                     setRenamingNode(null);
                   }
                 }}
               />
+              <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                ID: <span className="font-mono">{sanitizedRenameId || '—'}</span>
+              </div>
+              {renameError && (
+                <div className="mt-2 text-sm text-red-600 dark:text-red-400">
+                  {renameError}
+                </div>
+              )}
               <div className="flex gap-2 mt-4">
                 <button
                   onClick={() => setRenamingNode(null)}
@@ -391,13 +409,12 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 </button>
                 <button
                   onClick={() => {
-                    const newLabel = renameValue.trim();
-                    if (newLabel) {
-                      updateNode(renamingNode, { label: newLabel });
-                    }
+                    if (!renamingNode || renameError) return;
+                    renameNode(renamingNode, sanitizedRenameId, renameValue);
                     setRenamingNode(null);
                   }}
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                  disabled={!!renameError || !renamingNode}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:text-gray-200 transition-colors"
                 >
                   Rename
                 </button>

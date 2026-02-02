@@ -43,6 +43,28 @@ export function useGraph() {
       style: { ...n.style, background: data.color ?? n.data.color },
     } : n));
   }, []);
+
+  const renameNode = useCallback((id: string, nextId: string, label: string) => {
+    if (!nextId) return;
+    if (nextId !== id && nodes.some(n => n.id === nextId)) return;
+
+    setNodes(nds => nds.map(n => n.id === id ? {
+      ...n,
+      id: nextId,
+      data: { ...n.data, label },
+    } : n));
+
+    setEdges(eds => eds.map(e => {
+      if (e.source !== id && e.target !== id) return e;
+      return {
+        ...e,
+        source: e.source === id ? nextId : e.source,
+        target: e.target === id ? nextId : e.target,
+      };
+    }));
+
+    setSelected(prev => prev && prev.type === 'node' && prev.id === id ? { ...prev, id: nextId } : prev);
+  }, [nodes]);
   const updateEdge = useCallback((id: string, data: Partial<GraphEdge['data']>) => {
     setEdges(eds => eds.map(e => e.id === id ? {
       ...e,
@@ -96,6 +118,7 @@ export function useGraph() {
     setSelected,
     addNode, addEdge,
     updateNode, updateEdge,
+    renameNode,
     deleteSelected, deleteNode, deleteEdge,
     setNodes, setEdges,
     copyLink,
