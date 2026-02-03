@@ -1,9 +1,10 @@
 import MonacoEditor from '@monaco-editor/react';
-import { Copy, Network } from 'lucide-react';
+import { Copy, Network, Share2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext/ThemeContext';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useDotDraft } from '../hooks/useDotDraft';
 import { useGraphContext } from '../contexts/GraphContext/GraphContext';
+import ShareDialog from './ShareDialog';
 import pkg from '../../package.json';
 import { useState } from 'react';
 
@@ -20,6 +21,7 @@ export function Sidebar({
 }: SidebarProps) {
   const { dark } = useTheme();
   const { nodes, edges, setNodes, setEdges, copyLink } = useGraphContext();
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isLinkCopied, setIsLinkCopied] = useState(false);
   const {
     dotDraft,
@@ -35,6 +37,14 @@ export function Sidebar({
     if (success) {
       setIsLinkCopied(true);
       setTimeout(() => setIsLinkCopied(false), 2000); // Reset after 2 seconds
+    }
+  };
+
+  const handleShare = async () => {
+    const success = await copyLink();
+    if (success) {
+      setIsLinkCopied(true);
+      setIsShareDialogOpen(true);
     }
   };
 
