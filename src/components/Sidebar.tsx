@@ -1,9 +1,10 @@
 import MonacoEditor from '@monaco-editor/react';
-import { Copy, Network } from 'lucide-react';
+import { Copy, Network, Share2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext/ThemeContext';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useDotDraft } from '../hooks/useDotDraft';
 import { useGraphContext } from '../contexts/GraphContext/GraphContext';
+import ShareDialog from './ShareDialog';
 import pkg from '../../package.json';
 import { useState } from 'react';
 
@@ -20,6 +21,7 @@ export function Sidebar({
 }: SidebarProps) {
   const { dark } = useTheme();
   const { nodes, edges, setNodes, setEdges, copyLink } = useGraphContext();
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isLinkCopied, setIsLinkCopied] = useState(false);
   const {
     dotDraft,
@@ -35,6 +37,14 @@ export function Sidebar({
     if (success) {
       setIsLinkCopied(true);
       setTimeout(() => setIsLinkCopied(false), 2000); // Reset after 2 seconds
+    }
+  };
+
+  const handleShare = async () => {
+    const success = await copyLink();
+    if (success) {
+      setIsLinkCopied(true);
+      setIsShareDialogOpen(true);
     }
   };
 
@@ -115,9 +125,21 @@ export function Sidebar({
               </button>
             </div>
             <div className="px-5 py-4 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
-                             <button onClick={handleCopyLink} title="Copy shareable link" className="flex items-center gap-2 bg-indigo-600 text-white rounded-md px-4 py-2 font-semibold w-full">
-                 <Copy size={18} /> {isLinkCopied ? '✅ link copied' : 'Share'}
-               </button>
+                             <ShareDialog
+              open={isShareDialogOpen}
+              onOpenChange={setIsShareDialogOpen}
+              onShare={handleShare}
+            />
+            <div className="px-5 py-4 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
+              <button 
+                onClick={handleShare}
+                title="Share your polycule"
+                className="flex items-center gap-2 bg-indigo-600 text-white rounded-lg px-4 py-2 font-bold w-full shadow"
+              >
+                <Share2 size={18} />
+                {isLinkCopied ? '✅ Shared' : 'Share'}
+              </button>
+            </div>
             </div>
             <div className={dark ? 'py-3 text-center text-xs text-indigo-200 font-medium' : 'py-3 text-center text-xs text-indigo-400 font-medium'}>
               made with love by <a href="#" className={dark ? 'text-white underline font-bold' : 'text-indigo-600 underline font-bold'}>mia<span className="text-base">✨</span></a>
@@ -188,9 +210,21 @@ export function Sidebar({
         </button>
       </div>
       <div className="px-6 py-4 border-t border-neutral-800 dark:border-neutral-800 bg-[#23272f] dark:bg-[#23272f]">
-        <button onClick={handleCopyLink} title="Copy shareable link" className="flex items-center gap-2 bg-indigo-600 text-white rounded-lg px-4 py-2 font-bold w-full shadow">
-          <Copy size={18} /> {isLinkCopied ? '✅ link copied' : 'Share'}
-        </button>
+        <ShareDialog
+              open={isShareDialogOpen}
+              onOpenChange={setIsShareDialogOpen}
+              onShare={handleShare}
+            />
+            <div className="px-6 py-4 border-t border-neutral-800 dark:border-neutral-800 bg-[#23272f] dark:bg-[#23272f]">
+              <button 
+                onClick={handleShare}
+                title="Share your polycule"
+                className="flex items-center gap-2 bg-indigo-600 text-white rounded-lg px-4 py-2 font-bold w-full shadow"
+              >
+                <Share2 size={18} />
+                {isLinkCopied ? '✅ Shared' : 'Share'}
+              </button>
+            </div>
       </div>
       <div className={dark ? 'py-3 text-center text-xs text-indigo-300 font-medium' : 'py-3 text-center text-xs text-indigo-400 font-medium'}>
         made with love by <a href="#" className={dark ? 'text-white underline font-bold' : 'text-indigo-600 underline font-bold'}>mia<span className="text-base">✨</span></a>
