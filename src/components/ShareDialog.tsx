@@ -10,10 +10,6 @@ interface ShareDialogProps {
 export function ShareDialog({ open, onOpenChange, onShare }: ShareDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Trigger asChild>
-        <button className="hidden">Open dialog</button>
-      </Dialog.Trigger>
-      
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
         <Dialog.Content className="fixed left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 max-w-md w-full bg-white dark:bg-neutral-900 rounded-lg shadow-2xl z-50 p-6">
