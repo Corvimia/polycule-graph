@@ -1,5 +1,5 @@
-import { Dialog } from '@radix-ui/react-dialog';
-import { Check, X, Share2 } from 'lucide-react';
+import * as Dialog from '@radix-ui/react-dialog';
+import { X, Share2 } from 'lucide-react';
 
 interface ShareDialogProps {
   open: boolean;
@@ -32,16 +32,18 @@ export function ShareDialog({ open, onOpenChange, onShare }: ShareDialogProps) {
             </div>
             
             <div className="flex gap-3">
-              <button 
+              <button
                 onClick={onShare}
-                className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+                className="flex-1 inline-flex items-center justify-center bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
               >
                 <Share2 size={18} className="mr-2" />
                 Share Again
               </button>
-              <button 
+              <button
                 onClick={() => onOpenChange(false)}
-                className="flex-1 px-4 py-2 rounded-lg text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="flex-1 inline-flex items-center justify-center px-4 py-2 rounded-lg text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                Close
               </button>
             </div>
           </div>
