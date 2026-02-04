@@ -4,6 +4,7 @@ import { useTheme } from '../contexts/ThemeContext/ThemeContext';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useDotDraft } from '../hooks/useDotDraft';
 import { useGraphContext } from '../contexts/GraphContext/GraphContext';
+import ShareDialog from './ShareDialog';
 import pkg from '../../package.json';
 import { useState } from 'react';
 
@@ -20,7 +21,8 @@ export function Sidebar({
 }: SidebarProps) {
   const { dark } = useTheme();
   const { nodes, edges, setNodes, setEdges, copyLink } = useGraphContext();
-  const [isLinkCopied, setIsLinkCopied] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  // Link copied state is handled inside ShareDialog
   const {
     dotDraft,
     dotDraftError,
@@ -31,11 +33,15 @@ export function Sidebar({
   } = useDotDraft({ nodes, edges, setNodes, setEdges });
 
   const handleCopyLink = async () => {
-    const success = await copyLink();
-    if (success) {
-      setIsLinkCopied(true);
-      setTimeout(() => setIsLinkCopied(false), 2000); // Reset after 2 seconds
-    }
+    return await copyLink();
+  };
+
+  const openShareDialog = () => {
+    setIsShareDialogOpen(true);
+  };
+
+  const handleDialogShare = async () => {
+    return await handleCopyLink();
   };
 
   const handleNewGraph = () => {
@@ -115,9 +121,18 @@ export function Sidebar({
               </button>
             </div>
             <div className="px-5 py-4 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
-                             <button onClick={handleCopyLink} title="Copy shareable link" className="flex items-center gap-2 bg-indigo-600 text-white rounded-md px-4 py-2 font-semibold w-full">
-                 <Copy size={18} /> {isLinkCopied ? '✅ link copied' : 'Share'}
-               </button>
+              <button
+                onClick={openShareDialog}
+                title="Copy shareable link"
+                className="flex items-center gap-2 bg-indigo-600 text-white rounded-md px-4 py-2 font-semibold w-full"
+              >
+                <Copy size={18} /> Share
+              </button>
+              <ShareDialog
+                open={isShareDialogOpen}
+                onOpenChange={setIsShareDialogOpen}
+                onShare={handleDialogShare}
+              />
             </div>
             <div className={dark ? 'py-3 text-center text-xs text-indigo-200 font-medium' : 'py-3 text-center text-xs text-indigo-400 font-medium'}>
               made with love by <a href="#" className={dark ? 'text-white underline font-bold' : 'text-indigo-600 underline font-bold'}>mia<span className="text-base">✨</span></a>
@@ -188,9 +203,18 @@ export function Sidebar({
         </button>
       </div>
       <div className="px-6 py-4 border-t border-neutral-800 dark:border-neutral-800 bg-[#23272f] dark:bg-[#23272f]">
-        <button onClick={handleCopyLink} title="Copy shareable link" className="flex items-center gap-2 bg-indigo-600 text-white rounded-lg px-4 py-2 font-bold w-full shadow">
-          <Copy size={18} /> {isLinkCopied ? '✅ link copied' : 'Share'}
+        <button
+          onClick={openShareDialog}
+          title="Copy shareable link"
+          className="flex items-center gap-2 bg-indigo-600 text-white rounded-lg px-4 py-2 font-bold w-full shadow"
+        >
+          <Copy size={18} /> Share
         </button>
+        <ShareDialog
+          open={isShareDialogOpen}
+          onOpenChange={setIsShareDialogOpen}
+          onShare={handleDialogShare}
+        />
       </div>
       <div className={dark ? 'py-3 text-center text-xs text-indigo-300 font-medium' : 'py-3 text-center text-xs text-indigo-400 font-medium'}>
         made with love by <a href="#" className={dark ? 'text-white underline font-bold' : 'text-indigo-600 underline font-bold'}>mia<span className="text-base">✨</span></a>
