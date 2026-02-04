@@ -1,13 +1,27 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, Share2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface ShareDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onShare: () => void;
+  onShare: () => Promise<boolean> | boolean;
 }
 
 export function ShareDialog({ open, onOpenChange, onShare }: ShareDialogProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    const ok = await onShare();
+    if (!ok) return;
+
+    setCopied(true);
+    // Show a quick confirmation, then close.
+    setTimeout(() => {
+      onOpenChange(false);
+      setCopied(false);
+    }, 600);
+  };
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -24,7 +38,11 @@ export function ShareDialog({ open, onOpenChange, onShare }: ShareDialogProps) {
           
           <div className="space-y-4">
             <div className="text-sm text-gray-600 dark:text-gray-300">
-              <p>📢 Your current link has been copied to your clipboard!</p>
+              {copied ? (
+                <p className="font-medium text-emerald-600 dark:text-emerald-400">✅ Link copied to clipboard</p>
+              ) : (
+                <p>Click Share to copy a link to this graph.</p>
+              )}
               <p className="mt-2">⚠️ Important: This link will <strong>not</strong> update automatically when you make changes.</p>
               <p className="mt-2 text-sm">
                 After adding favorites, renaming nodes, or making any changes, you'll need to click Share again to get an updated link.
@@ -33,11 +51,11 @@ export function ShareDialog({ open, onOpenChange, onShare }: ShareDialogProps) {
             
             <div className="flex gap-3">
               <button
-                onClick={onShare}
+                onClick={handleShare}
                 className="flex-1 inline-flex items-center justify-center bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
               >
                 <Share2 size={18} className="mr-2" />
-                Share Again
+                Share
               </button>
               <button
                 onClick={() => onOpenChange(false)}

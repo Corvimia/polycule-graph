@@ -22,7 +22,7 @@ export function Sidebar({
   const { dark } = useTheme();
   const { nodes, edges, setNodes, setEdges, copyLink } = useGraphContext();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-  const [isLinkCopied, setIsLinkCopied] = useState(false);
+  // Link copied state is handled inside ShareDialog
   const {
     dotDraft,
     dotDraftError,
@@ -33,16 +33,15 @@ export function Sidebar({
   } = useDotDraft({ nodes, edges, setNodes, setEdges });
 
   const handleCopyLink = async () => {
-    const success = await copyLink();
-    if (success) {
-      setIsLinkCopied(true);
-      setTimeout(() => setIsLinkCopied(false), 2000); // Reset after 2 seconds
-    }
+    return await copyLink();
   };
 
-  const handleShare = async () => {
-    await handleCopyLink();
+  const openShareDialog = () => {
     setIsShareDialogOpen(true);
+  };
+
+  const handleDialogShare = async () => {
+    return await handleCopyLink();
   };
 
   const handleNewGraph = () => {
@@ -123,16 +122,16 @@ export function Sidebar({
             </div>
             <div className="px-5 py-4 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
               <button
-                onClick={handleShare}
+                onClick={openShareDialog}
                 title="Copy shareable link"
                 className="flex items-center gap-2 bg-indigo-600 text-white rounded-md px-4 py-2 font-semibold w-full"
               >
-                <Copy size={18} /> {isLinkCopied ? '✅ link copied' : 'Share'}
+                <Copy size={18} /> Share
               </button>
               <ShareDialog
                 open={isShareDialogOpen}
                 onOpenChange={setIsShareDialogOpen}
-                onShare={handleCopyLink}
+                onShare={handleDialogShare}
               />
             </div>
             <div className={dark ? 'py-3 text-center text-xs text-indigo-200 font-medium' : 'py-3 text-center text-xs text-indigo-400 font-medium'}>
@@ -205,16 +204,16 @@ export function Sidebar({
       </div>
       <div className="px-6 py-4 border-t border-neutral-800 dark:border-neutral-800 bg-[#23272f] dark:bg-[#23272f]">
         <button
-          onClick={handleShare}
+          onClick={openShareDialog}
           title="Copy shareable link"
           className="flex items-center gap-2 bg-indigo-600 text-white rounded-lg px-4 py-2 font-bold w-full shadow"
         >
-          <Copy size={18} /> {isLinkCopied ? '✅ link copied' : 'Share'}
+          <Copy size={18} /> Share
         </button>
         <ShareDialog
           open={isShareDialogOpen}
           onOpenChange={setIsShareDialogOpen}
-          onShare={handleCopyLink}
+          onShare={handleDialogShare}
         />
       </div>
       <div className={dark ? 'py-3 text-center text-xs text-indigo-300 font-medium' : 'py-3 text-center text-xs text-indigo-400 font-medium'}>
