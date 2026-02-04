@@ -135,7 +135,7 @@ export function Sidebar({
               />
             </div>
             <div className={dark ? 'py-3 text-center text-xs text-indigo-200 font-medium' : 'py-3 text-center text-xs text-indigo-400 font-medium'}>
-              made with love by <a href="#" className={dark ? 'text-white underline font-bold' : 'text-indigo-600 underline font-bold'}>mia<span className="text-base">✨</span></a>
+              made with love by <a href="https://github.com/Corvimia" target="_blank" rel="noreferrer" className={dark ? 'text-white underline font-bold' : 'text-indigo-600 underline font-bold'}>mia<span className="text-base">✨</span></a>
             </div>
           </Dialog.Content>
         </Dialog.Portal>
@@ -217,7 +217,7 @@ export function Sidebar({
         />
       </div>
       <div className={dark ? 'py-3 text-center text-xs text-indigo-300 font-medium' : 'py-3 text-center text-xs text-indigo-400 font-medium'}>
-        made with love by <a href="#" className={dark ? 'text-white underline font-bold' : 'text-indigo-600 underline font-bold'}>mia<span className="text-base">✨</span></a>
+        made with love by <a href="https://github.com/Corvimia" target="_blank" rel="noreferrer" className={dark ? 'text-white underline font-bold' : 'text-indigo-600 underline font-bold'}>mia<span className="text-base">✨</span></a>
       </div>
     </aside>
   );
