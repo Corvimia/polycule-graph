@@ -14,7 +14,7 @@ export const defaultNodes = [
     data: {},
     type: 'default',
   },
-];
+]
 
 export const defaultEdges = [
   {
@@ -33,4 +33,4 @@ export const defaultEdges = [
     data: { label: '' },
     directed: false,
   },
-]; 
+]

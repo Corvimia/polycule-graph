@@ -16,6 +16,11 @@
 
 For local development, install dependencies with `pnpm install`. In CI (GitHub Actions), use `pnpm install --frozen-lockfile` to ensure the lockfile stays consistent. To speed up CI runs, cache the pnpm store directory (use `pnpm store path` to get the path, or set `PNPM_STORE_PATH` explicitly in the workflow).
 
+### Formatting
+
+- Format: `pnpm run format`
+- Check formatting: `pnpm run format:check`
+
 ## TODO
 
 - [ ] **Visual Graph Editing:**
