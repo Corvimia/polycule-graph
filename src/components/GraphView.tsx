@@ -1,45 +1,45 @@
-import CytoscapeComponent from 'react-cytoscapejs';
-import { Plus, Trash2, Edit3, RotateCcw } from 'lucide-react';
-import { useGraphContext } from '../contexts/GraphContext/GraphContext';
-import { useTheme } from '../contexts/ThemeContext/ThemeContext';
-import type cytoscape from 'cytoscape';
-import { stringToColor } from '../utils/graphDot';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { useCytoscapeInteractions } from '../hooks/useCytoscapeInteractions';
-import { ContextMenu, ContextMenuItem, ContextMenuRoot } from './ui/context-menu';
-import { useHotkeys } from 'react-hotkeys-hook';
+import CytoscapeComponent from 'react-cytoscapejs'
+import { Plus, Trash2, Edit3, RotateCcw } from 'lucide-react'
+import { useGraphContext } from '../contexts/GraphContext/GraphContext'
+import { useTheme } from '../contexts/ThemeContext/ThemeContext'
+import type cytoscape from 'cytoscape'
+import { stringToColor } from '../utils/graphDot'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { useCytoscapeInteractions } from '../hooks/useCytoscapeInteractions'
+import { ContextMenu, ContextMenuItem, ContextMenuRoot } from './ui/context-menu'
+import { useHotkeys } from 'react-hotkeys-hook'
 
 interface GraphViewProps {
-  sidebarOpen: boolean;
-  isMobile: boolean;
+  sidebarOpen: boolean
+  isMobile: boolean
 }
 
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
-  const { nodes, edges, deleteNode, deleteEdge, addNode, renameNode } = useGraphContext();
-  const { dark } = useTheme();
-  const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
-  const renameInputRef = useRef<HTMLInputElement>(null);
-  const [isLayoutRunning, setIsLayoutRunning] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
-  const sanitizeNodeId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const { nodes, edges, deleteNode, deleteEdge, addNode, renameNode } = useGraphContext()
+  const { dark } = useTheme()
+  const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const [isLayoutRunning, setIsLayoutRunning] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const sanitizeNodeId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
 
   // Function to manually trigger layout
   const triggerLayout = useCallback(() => {
     if (cy) {
-      setIsLayoutRunning(true);
+      setIsLayoutRunning(true)
       const layout = cy.layout({
         name: 'cose',
         fit: true,
-      });
+      })
 
       layout.on('layoutstop', () => {
-        setIsLayoutRunning(false);
-      });
+        setIsLayoutRunning(false)
+      })
 
-      layout.run();
+      layout.run()
     }
-  }, [cy]);
+  }, [cy])
 
   const {
     contextNode,
@@ -50,81 +50,98 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     setContextMenuPos,
     setEdgeSource,
     setRenamingNode,
-  } = useCytoscapeInteractions(cy);
-  const sanitizedRenameId = sanitizeNodeId(renameValue);
-  const hasDuplicateId = !!renamingNode
-    && sanitizedRenameId.length > 0
-    && sanitizedRenameId !== renamingNode
-    && nodes.some(n => n.id === sanitizedRenameId);
-  const renameError = sanitizedRenameId.length === 0
-    ? 'ID must include at least one letter or number.'
-    : hasDuplicateId
-      ? 'ID already exists.'
-      : '';
+  } = useCytoscapeInteractions(cy)
+  const sanitizedRenameId = sanitizeNodeId(renameValue)
+  const hasDuplicateId =
+    !!renamingNode &&
+    sanitizedRenameId.length > 0 &&
+    sanitizedRenameId !== renamingNode &&
+    nodes.some(n => n.id === sanitizedRenameId)
+  const renameError =
+    sanitizedRenameId.length === 0
+      ? 'ID must include at least one letter or number.'
+      : hasDuplicateId
+        ? 'ID already exists.'
+        : ''
 
   // Close context menu on click elsewhere
   useEffect(() => {
-    const handleClick = () => setContextMenuPos(null);
+    const handleClick = () => setContextMenuPos(null)
     if (contextMenuPos) {
-      window.addEventListener('click', handleClick);
-      return () => window.removeEventListener('click', handleClick);
+      window.addEventListener('click', handleClick)
+      return () => window.removeEventListener('click', handleClick)
     }
-  }, [contextMenuPos, setContextMenuPos]);
+  }, [contextMenuPos, setContextMenuPos])
 
   // Reset rename value when dialog closes
   useEffect(() => {
     if (!renamingNode) {
-      setRenameValue('');
+      setRenameValue('')
     }
-  }, [renamingNode]);
+  }, [renamingNode])
 
   // Run layout on initial load
   useEffect(() => {
     if (cy && nodes.length > 0) {
-      triggerLayout();
+      triggerLayout()
     }
-  }, [cy, nodes.length, triggerLayout]); // Only run when cy is first set
+  }, [cy, nodes.length, triggerLayout]) // Only run when cy is first set
 
   // Keyboard shortcuts using react-hotkeys-hook
-  useHotkeys('l', (e) => {
-    // Only trigger layout if we have a graph and no input is focused
-    // Also check that no modifier keys are pressed (cmd, ctrl, alt, shift)
-    if (cy && nodes.length > 0 && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
-      e.preventDefault();
-      console.log('Triggering layout from hotkey...');
-      triggerLayout();
-    }
-  }, {
-    enableOnFormTags: false, // Don't trigger when in input fields
-    preventDefault: false, // Let us handle preventDefault manually
-    enableOnContentEditable: false, // Don't trigger when in contenteditable elements
-  }, [cy, nodes.length, triggerLayout]);
+  useHotkeys(
+    'l',
+    e => {
+      // Only trigger layout if we have a graph and no input is focused
+      // Also check that no modifier keys are pressed (cmd, ctrl, alt, shift)
+      if (cy && nodes.length > 0 && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault()
+        console.log('Triggering layout from hotkey...')
+        triggerLayout()
+      }
+    },
+    {
+      enableOnFormTags: false, // Don't trigger when in input fields
+      preventDefault: false, // Let us handle preventDefault manually
+      enableOnContentEditable: false, // Don't trigger when in contenteditable elements
+    },
+    [cy, nodes.length, triggerLayout],
+  )
 
   return (
-    <main 
-      className={`flex-1 flex flex-col items-stretch relative bg-neutral-100 dark:bg-neutral-900 min-w-0 min-h-0 overflow-hidden ${!isMobile && sidebarOpen ? 'ml-80' : ''} transition-all duration-200`} 
+    <main
+      className={`flex-1 flex flex-col items-stretch relative bg-neutral-100 dark:bg-neutral-900 min-w-0 min-h-0 overflow-hidden ${!isMobile && sidebarOpen ? 'ml-80' : ''} transition-all duration-200`}
       style={{ minHeight: '60vh', height: '100%' }}
       tabIndex={0}
-      onClick={(e) => {
+      onClick={e => {
         // Focus the main container when clicked
         if (e.target === e.currentTarget) {
-          e.currentTarget.focus();
+          e.currentTarget.focus()
         }
       }}
     >
-      <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', justifyContent: 'center', minHeight: '60vh', height: '100%', minWidth: 0 }}>
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'stretch',
+          justifyContent: 'center',
+          minHeight: '60vh',
+          height: '100%',
+          minWidth: 0,
+        }}
+      >
         <CytoscapeComponent
           elements={[
             ...nodes.map(n => {
               // Use id as label if label is missing
-              const label = n.data.label ?? n.id;
+              const label = n.data.label ?? n.id
               return {
                 ...n,
                 data: {
                   id: n.id,
                   label,
                   color: n.data.color ?? stringToColor(label), // hash-based color
-                }
+                },
               }
             }),
             ...edges.map(e => ({
@@ -137,13 +154,21 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 color: e.data.color ?? '#bdbdbd',
                 width: e.data.width ?? 3,
                 directed: e.directed !== false, // default to true if undefined
-              }
-            }))
+              },
+            })),
           ]}
-          style={{ width: '80vw', height: '100%', minHeight: 400, background: dark ? '#23272f' : '#fff', borderRadius: 12, boxShadow: '0 2px 12px #0001', minWidth: 0 }}
+          style={{
+            width: '80vw',
+            height: '100%',
+            minHeight: 400,
+            background: dark ? '#23272f' : '#fff',
+            borderRadius: 12,
+            boxShadow: '0 2px 12px #0001',
+            minWidth: 0,
+          }}
           container={{ className: 'cytoscape-container' }}
           cy={(cyInstance: cytoscape.Core) => {
-            setCy(cyInstance);
+            setCy(cyInstance)
           }}
           layout={{
             name: 'cose',
@@ -161,15 +186,15 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
             coolingFactor: 0.95,
             minTemp: 1.0,
             randomize: true,
-            animate: true
+            animate: true,
           }}
           stylesheet={[
             {
               selector: 'node',
               style: {
                 'background-color': 'data(color)',
-                'label': 'data(label)',
-                'color': '#fff',
+                label: 'data(label)',
+                color: '#fff',
                 'text-valign': 'center',
                 'text-halign': 'center',
                 'font-size': 22,
@@ -180,28 +205,28 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 'border-style': 'solid',
                 'text-shadow': '0 2px 8px #000a',
                 'box-shadow': '0 4px 24px #0002',
-                'shape': 'roundrectangle',
+                shape: 'roundrectangle',
                 'background-opacity': 1,
                 'text-wrap': 'wrap',
                 'text-max-width': '200px',
-                'width': 'label',
-                'height': 'label',
-                'padding': '10px',
+                width: 'label',
+                height: 'label',
+                padding: '10px',
                 'padding-relative-to': 'width',
               },
             },
             {
               selector: 'edge',
               style: {
-                'width': 4,
+                width: 4,
                 'line-color': '#bdbdbd',
                 'target-arrow-color': '#bdbdbd',
                 'curve-style': 'bezier',
-                'label': 'data(label)',
+                label: 'data(label)',
                 'font-size': 16,
-                'color': '#a5b4fc',
+                color: '#a5b4fc',
                 'target-arrow-shape': 'none',
-                'opacity': 0.95,
+                opacity: 0.95,
               },
             },
             {
@@ -258,8 +283,8 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                   <ContextMenuItem
                     icon={Plus}
                     onClick={() => {
-                      setEdgeSource(contextNode);
-                      setContextMenuPos(null);
+                      setEdgeSource(contextNode)
+                      setContextMenuPos(null)
                     }}
                   >
                     New edge
@@ -267,10 +292,10 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                   <ContextMenuItem
                     icon={Edit3}
                     onClick={() => {
-                      const node = nodes.find(n => n.id === contextNode);
-                      setRenameValue(node?.data.label || contextNode);
-                      setRenamingNode(contextNode);
-                      setContextMenuPos(null);
+                      const node = nodes.find(n => n.id === contextNode)
+                      setRenameValue(node?.data.label || contextNode)
+                      setRenamingNode(contextNode)
+                      setContextMenuPos(null)
                     }}
                   >
                     Rename
@@ -279,8 +304,8 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     icon={Trash2}
                     className="text-red-400 hover:bg-red-900/20"
                     onClick={() => {
-                      deleteNode(contextNode);
-                      setContextMenuPos(null);
+                      deleteNode(contextNode)
+                      setContextMenuPos(null)
                     }}
                   >
                     Delete
@@ -293,8 +318,8 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                   icon={Trash2}
                   className="text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
                   onClick={() => {
-                    deleteEdge(contextEdge);
-                    setContextMenuPos(null);
+                    deleteEdge(contextEdge)
+                    setContextMenuPos(null)
                   }}
                 >
                   Delete
@@ -312,53 +337,54 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 onClick={() => {
                   // Convert screen coordinates to Cytoscape coordinates
                   if (cy && contextMenuPos) {
-                    const pos = cy.pan() || { x: 0, y: 0 };
-                    const zoom = cy.zoom() || 1;
-                    const container = cy.container();
-                    if (container) { // Null check for container
-                      const rect = container.getBoundingClientRect();
+                    const pos = cy.pan() || { x: 0, y: 0 }
+                    const zoom = cy.zoom() || 1
+                    const container = cy.container()
+                    if (container) {
+                      // Null check for container
+                      const rect = container.getBoundingClientRect()
 
                       // Calculate the position in Cytoscape coordinates
-                      const cyX = (contextMenuPos.x - rect.left - pos.x) / zoom;
-                      const cyY = (contextMenuPos.y - rect.top - pos.y) / zoom;
+                      const cyX = (contextMenuPos.x - rect.left - pos.x) / zoom
+                      const cyY = (contextMenuPos.y - rect.top - pos.y) / zoom
 
                       // Check if position is too close to existing nodes and adjust if needed
-                      const minDistance = 150; // Minimum distance between nodes
-                      let adjustedX = cyX;
-                      let adjustedY = cyY;
+                      const minDistance = 150 // Minimum distance between nodes
+                      let adjustedX = cyX
+                      let adjustedY = cyY
 
                       for (const node of nodes) {
                         if (node.position) {
-                          const dx = node.position.x - cyX;
-                          const dy = node.position.y - cyY;
-                          const distance = Math.sqrt(dx * dx + dy * dy);
+                          const dx = node.position.x - cyX
+                          const dy = node.position.y - cyY
+                          const distance = Math.sqrt(dx * dx + dy * dy)
 
                           if (distance < minDistance) {
                             // Move the new node away from the existing one
-                            const angle = Math.atan2(dy, dx);
-                            adjustedX = node.position.x + Math.cos(angle) * minDistance;
-                            adjustedY = node.position.y + Math.sin(angle) * minDistance;
-                            break;
+                            const angle = Math.atan2(dy, dx)
+                            adjustedX = node.position.x + Math.cos(angle) * minDistance
+                            adjustedY = node.position.y + Math.sin(angle) * minDistance
+                            break
                           }
                         }
                       }
 
                       // Find first unused letter
-                      const usedLabels = new Set(nodes.map(n => n.id));
-                      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                      let letter = null;
+                      const usedLabels = new Set(nodes.map(n => n.id))
+                      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                      let letter = null
                       for (let i = 0; i < alphabet.length; ++i) {
                         if (!usedLabels.has(alphabet[i])) {
-                          letter = alphabet[i];
-                          break;
+                          letter = alphabet[i]
+                          break
                         }
                       }
                       if (letter) {
-                        addNode({ id: letter, position: { x: adjustedX, y: adjustedY } });
+                        addNode({ id: letter, position: { x: adjustedX, y: adjustedY } })
                       }
                     }
                   }
-                  setContextMenuPos(null);
+                  setContextMenuPos(null)
                 }}
               >
                 New node
@@ -378,17 +404,17 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 ref={renameInputRef}
                 type="text"
                 value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
+                onChange={e => setRenameValue(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 autoFocus
-                onKeyDown={(e) => {
+                onKeyDown={e => {
                   if (e.key === 'Enter') {
-                    if (!renamingNode || renameError) return;
-                    const newLabel = (e.target as HTMLInputElement).value;
-                    renameNode(renamingNode, sanitizedRenameId, newLabel);
-                    setRenamingNode(null);
+                    if (!renamingNode || renameError) return
+                    const newLabel = (e.target as HTMLInputElement).value
+                    renameNode(renamingNode, sanitizedRenameId, newLabel)
+                    setRenamingNode(null)
                   } else if (e.key === 'Escape') {
-                    setRenamingNode(null);
+                    setRenamingNode(null)
                   }
                 }}
               />
@@ -396,9 +422,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 ID: <span className="font-mono">{sanitizedRenameId || '—'}</span>
               </div>
               {renameError && (
-                <div className="mt-2 text-sm text-red-600 dark:text-red-400">
-                  {renameError}
-                </div>
+                <div className="mt-2 text-sm text-red-600 dark:text-red-400">{renameError}</div>
               )}
               <div className="flex gap-2 mt-4">
                 <button
@@ -409,9 +433,9 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 </button>
                 <button
                   onClick={() => {
-                    if (!renamingNode || renameError) return;
-                    renameNode(renamingNode, sanitizedRenameId, renameValue);
-                    setRenamingNode(null);
+                    if (!renamingNode || renameError) return
+                    renameNode(renamingNode, sanitizedRenameId, renameValue)
+                    setRenamingNode(null)
                   }}
                   disabled={!!renameError || !renamingNode}
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:text-gray-200 transition-colors"
@@ -424,5 +448,5 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
         )}
       </div>
     </main>
-  );
-} 
+  )
+}

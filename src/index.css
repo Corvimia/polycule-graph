@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -51,7 +51,7 @@
 /* Subtle grid background for main area */
 .bg-dot {
   background-color: #181a20;
-  background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 

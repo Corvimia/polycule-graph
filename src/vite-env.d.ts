@@ -1,3 +1,3 @@
 /// <reference types="vite/client" />
 
-declare module 'react-cytoscapejs';
+declare module 'react-cytoscapejs'
