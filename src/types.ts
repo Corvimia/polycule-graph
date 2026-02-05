@@ -15,10 +15,13 @@ export interface GraphNode {
   }
 }
 
+export type EdgePattern = 'solid' | 'dashed' | 'dotted'
+
 export interface GraphEdgeData {
   label?: string
   color?: string
   width?: number
+  pattern?: EdgePattern
 }
 
 export interface GraphEdge {
