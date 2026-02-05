@@ -17,6 +17,7 @@ interface GraphViewProps {
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const { nodes, edges, deleteNode, deleteEdge, addNode, renameNode } = useGraphContext()
   const { dark } = useTheme()
+  const hasAnyDotPositions = nodes.some(n => !!n.position)
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
@@ -114,12 +115,13 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     }
   }, [renamingNode])
 
-  // Run layout on initial load
+  // Run layout on initial load ONLY if there are no explicit DOT positions.
+  // If DOT provides positions, we rely on Cytoscape's `preset` layout instead.
   useEffect(() => {
-    if (cy && nodes.length > 0) {
+    if (cy && nodes.length > 0 && !hasAnyDotPositions) {
       triggerLayout()
     }
-  }, [cy, nodes.length, triggerLayout]) // Only run when cy is first set
+  }, [cy, nodes.length, triggerLayout, hasAnyDotPositions]) // Only run when cy is first set
 
   // Keyboard shortcuts using react-hotkeys-hook
   useHotkeys(
@@ -204,24 +206,33 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
           cy={(cyInstance: cytoscape.Core) => {
             setCy(cyInstance)
           }}
-          layout={{
-            name: 'cose',
-            fit: true,
-            padding: 100,
-            nodeDimensionsIncludeLabels: true,
-            nodeRepulsion: 15000,
-            nodeOverlap: 20,
-            idealEdgeLength: 300,
-            edgeElasticity: 0.3,
-            nestingFactor: 0.1,
-            gravity: 40,
-            numIter: 2500,
-            initialTemp: 200,
-            coolingFactor: 0.95,
-            minTemp: 1.0,
-            randomize: true,
-            animate: true,
-          }}
+          layout={
+            hasAnyDotPositions
+              ? {
+                  name: 'preset',
+                  fit: true,
+                  padding: 100,
+                  animate: false,
+                }
+              : {
+                  name: 'cose',
+                  fit: true,
+                  padding: 100,
+                  nodeDimensionsIncludeLabels: true,
+                  nodeRepulsion: 15000,
+                  nodeOverlap: 20,
+                  idealEdgeLength: 300,
+                  edgeElasticity: 0.3,
+                  nestingFactor: 0.1,
+                  gravity: 40,
+                  numIter: 2500,
+                  initialTemp: 200,
+                  coolingFactor: 0.95,
+                  minTemp: 1.0,
+                  randomize: true,
+                  animate: true,
+                }
+          }
           stylesheet={[
             {
               selector: 'node',

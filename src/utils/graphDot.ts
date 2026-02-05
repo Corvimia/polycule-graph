@@ -26,12 +26,34 @@ export function dotAstToCytoscape(ast: DotAst): { nodes: GraphNode[]; edges: Gra
   const edges: GraphEdge[] = []
   const nodeSet = new Set<string>()
 
+  function unquote(value: string): string {
+    const v = `${value ?? ''}`
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      return v.slice(1, -1)
+    }
+    return v
+  }
+
+  function parsePos(posRaw: string | undefined): { x: number; y: number } | undefined {
+    if (!posRaw) return undefined
+    // Common Graphviz-ish forms we might see:
+    // - "12,34"
+    // - "12,34!" (the ! suffix means "pin" in graphviz)
+    // - "12,34,0" (3D-ish; ignore the rest)
+    const cleaned = unquote(posRaw).trim().replace(/!$/, '')
+    const [xStr, yStr] = cleaned.split(',').map(s => s.trim())
+    const x = Number.parseFloat(xStr)
+    const y = Number.parseFloat(yStr)
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return undefined
+    return { x, y }
+  }
+
   function getAttrs(attrsArr: DotAttr[]): Record<string, string> {
     const attrs: Record<string, string> = {}
     if (!Array.isArray(attrsArr)) return attrs
     for (const attr of attrsArr) {
       if (attr.type === 'attr') {
-        attrs[attr.id] = attr.eq
+        attrs[attr.id] = unquote(attr.eq)
       }
     }
     return attrs
@@ -44,8 +66,10 @@ export function dotAstToCytoscape(ast: DotAst): { nodes: GraphNode[]; edges: Gra
         nodeSet.add(id)
         const attrs = getAttrs(child.attr_list)
         const label = attrs.label && attrs.label !== id ? attrs.label : undefined
+        const pos = parsePos(attrs.pos)
         nodes.push({
           id,
+          ...(pos ? { position: pos } : {}),
           data: {
             ...(label ? { label } : {}),
             ...(attrs.color ? { color: attrs.color } : {}),
