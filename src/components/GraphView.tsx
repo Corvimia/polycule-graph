@@ -382,12 +382,15 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                   <ContextMenuItem
                     icon={Target}
                     onClick={() => {
+                      // If focus mode is already active, keep the current hop count when switching nodes.
                       setFocusNodeId(contextNode)
-                      setFocusDepth(1)
+                      if (!focusNodeId) {
+                        setFocusDepth(1)
+                      }
                       setContextMenuPos(null)
                     }}
                   >
-                    Focus (1 hop)
+                    Focus ({focusNodeId ? focusDepth : 1} hop{(focusNodeId ? focusDepth : 1) === 1 ? '' : 's'})
                   </ContextMenuItem>
                   {focusNodeId && (
                     <ContextMenuItem
