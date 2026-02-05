@@ -14,7 +14,9 @@ export function toDot(nodes: GraphNode[], edges: GraphEdge[]): string {
     const label = edge.data?.label ? `label="${edge.data.label}"` : ''
     const color = edge.data?.color ? `color="${edge.data.color}"` : ''
     const width = edge.data?.width ? `penwidth=${edge.data.width}` : ''
-    const attrs = [label, color, width].filter(Boolean).join(', ')
+    const pattern =
+      edge.data?.pattern && edge.data.pattern !== 'solid' ? `style="${edge.data.pattern}"` : ''
+    const attrs = [label, color, width, pattern].filter(Boolean).join(', ')
     dot += `  "${edge.source}" -- "${edge.target}"${attrs ? ` [${attrs}]` : ''};\n`
   }
   dot += '}'
@@ -73,6 +75,7 @@ export function dotAstToCytoscape(ast: DotAst): { nodes: GraphNode[]; edges: Gra
               ...(attrs.label ? { label: attrs.label } : {}),
               ...(attrs.color ? { color: attrs.color } : {}),
               ...(attrs.penwidth ? { width: Number(attrs.penwidth) } : {}),
+              ...(attrs.style ? { pattern: attrs.style as 'solid' | 'dashed' | 'dotted' } : {}),
             },
             style: {
               ...(attrs.color ? { stroke: attrs.color } : {}),
