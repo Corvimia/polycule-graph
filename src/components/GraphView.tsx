@@ -15,13 +15,19 @@ interface GraphViewProps {
 }
 
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
-  const { nodes, edges, deleteNode, deleteEdge, addNode, renameNode } = useGraphContext()
+  const { nodes, edges, deleteNode, deleteEdge, addNode, renameNode, updateEdge } =
+    useGraphContext()
   const { dark } = useTheme()
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const [isLayoutRunning, setIsLayoutRunning] = useState(false)
   const [renameValue, setRenameValue] = useState('')
+
+  const [editingEdge, setEditingEdge] = useState<string | null>(null)
+  const [edgePattern, setEdgePattern] = useState<'solid' | 'dashed' | 'dotted'>('solid')
+  const [edgeColor, setEdgeColor] = useState<string>('#bdbdbd')
+  const [edgeWidth, setEdgeWidth] = useState<number>(3)
 
   // Focus mode: show only nodes within N hops of a selected node
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null)
@@ -114,6 +120,17 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     }
   }, [renamingNode])
 
+  // Populate edge edit form when opened
+  useEffect(() => {
+    if (!editingEdge) return
+    const edge = edges.find(e => e.id === editingEdge)
+    if (!edge) return
+
+    setEdgePattern(edge.data.pattern ?? 'solid')
+    setEdgeColor(edge.data.color ?? '#bdbdbd')
+    setEdgeWidth(edge.data.width ?? 3)
+  }, [editingEdge, edges])
+
   // Run layout on initial load
   useEffect(() => {
     if (cy && nodes.length > 0) {
@@ -187,6 +204,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 label: e.data.label ?? '',
                 color: e.data.color ?? '#bdbdbd',
                 width: e.data.width ?? 3,
+                pattern: e.data.pattern ?? 'solid',
                 directed: e.directed !== false, // default to true if undefined
               },
             })),
@@ -262,9 +280,10 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
             {
               selector: 'edge',
               style: {
-                width: 4,
-                'line-color': '#bdbdbd',
-                'target-arrow-color': '#bdbdbd',
+                width: 'data(width)',
+                'line-color': 'data(color)',
+                'target-arrow-color': 'data(color)',
+                'line-style': 'data(pattern)',
                 'curve-style': 'bezier',
                 label: 'data(label)',
                 'font-size': 16,
@@ -277,7 +296,6 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
               selector: 'edge[directed = 1]',
               style: {
                 'target-arrow-shape': 'triangle',
-                'target-arrow-color': '#bdbdbd',
               },
             },
           ]}
@@ -417,16 +435,27 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
               )}
               {/* Edge context menu */}
               {contextEdge && (
-                <ContextMenuItem
-                  icon={Trash2}
-                  className="text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
-                  onClick={() => {
-                    deleteEdge(contextEdge)
-                    setContextMenuPos(null)
-                  }}
-                >
-                  Delete
-                </ContextMenuItem>
+                <>
+                  <ContextMenuItem
+                    icon={Edit3}
+                    onClick={() => {
+                      setEditingEdge(contextEdge)
+                      setContextMenuPos(null)
+                    }}
+                  >
+                    Edit Edge
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    icon={Trash2}
+                    className="text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
+                    onClick={() => {
+                      deleteEdge(contextEdge)
+                      setContextMenuPos(null)
+                    }}
+                  >
+                    Delete
+                  </ContextMenuItem>
+                </>
               )}
             </ContextMenu>
           )}
@@ -544,6 +573,138 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:text-gray-200 transition-colors"
                 >
                   Rename
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Edge Dialog */}
+        {editingEdge && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+                Edit Edge
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Pattern
+                  </div>
+                  <div className="space-y-2">
+                    {(
+                      [
+                        { value: 'solid', label: 'Solid' },
+                        { value: 'dashed', label: 'Dashed' },
+                        { value: 'dotted', label: 'Dotted' },
+                      ] as const
+                    ).map(opt => (
+                      <label
+                        key={opt.value}
+                        className="flex items-center gap-3 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40 cursor-pointer"
+                      >
+                        <input
+                          type="radio"
+                          name="edge-pattern"
+                          value={opt.value}
+                          checked={edgePattern === opt.value}
+                          onChange={() => setEdgePattern(opt.value)}
+                        />
+                        <span className="w-16 h-4 flex items-center">
+                          <svg width="64" height="12" viewBox="0 0 64 12">
+                            <line
+                              x1="2"
+                              y1="6"
+                              x2="62"
+                              y2="6"
+                              stroke={edgeColor}
+                              strokeWidth={Math.max(2, Math.min(6, edgeWidth))}
+                              strokeDasharray={
+                                opt.value === 'solid'
+                                  ? '0'
+                                  : opt.value === 'dashed'
+                                    ? '8 6'
+                                    : '2 6'
+                              }
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
+                        <span className="text-sm text-gray-800 dark:text-gray-100">
+                          {opt.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                      Color
+                    </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <input
+                        type="color"
+                        value={edgeColor}
+                        onChange={e => setEdgeColor(e.target.value)}
+                        className="h-10 w-10 p-0 border-0 bg-transparent"
+                        aria-label="Edge color"
+                      />
+                      <input
+                        type="text"
+                        value={edgeColor}
+                        onChange={e => setEdgeColor(e.target.value)}
+                        className="flex-1 min-w-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                        placeholder="#bdbdbd"
+                      />
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      HEX (e.g. #ff00aa)
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                      Width
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={12}
+                      step={1}
+                      value={edgeWidth}
+                      onChange={e => setEdgeWidth(Number(e.target.value))}
+                      className="w-full"
+                    />
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {edgeWidth}px
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 mt-6">
+                <button
+                  onClick={() => setEditingEdge(null)}
+                  className="flex-1 px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!editingEdge) return
+                    updateEdge(editingEdge, {
+                      color: edgeColor,
+                      width: edgeWidth,
+                      pattern: edgePattern,
+                    })
+                    setEditingEdge(null)
+                  }}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                  Save
                 </button>
               </div>
             </div>
