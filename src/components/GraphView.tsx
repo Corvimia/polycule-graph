@@ -1,5 +1,5 @@
 import CytoscapeComponent from 'react-cytoscapejs'
-import { Plus, Trash2, Edit3, RotateCcw } from 'lucide-react'
+import { Plus, Trash2, Edit3, RotateCcw, Target, X, Minus } from 'lucide-react'
 import { useGraphContext } from '../contexts/GraphContext/GraphContext'
 import { useTheme } from '../contexts/ThemeContext/ThemeContext'
 import type cytoscape from 'cytoscape'
@@ -29,6 +29,10 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const [edgeColor, setEdgeColor] = useState<string>('#bdbdbd')
   const [edgeWidth, setEdgeWidth] = useState<number>(3)
 
+  // Focus mode: show only nodes within N hops of a selected node
+  const [focusNodeId, setFocusNodeId] = useState<string | null>(null)
+  const [focusDepth, setFocusDepth] = useState<number>(1)
+
   const sanitizeNodeId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
 
   // Function to manually trigger layout
@@ -47,6 +51,35 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
       layout.run()
     }
   }, [cy])
+
+  const applyFocus = useCallback(
+    (nodeId: string | null, depth: number) => {
+      if (!cy) return
+
+      // Clear focus
+      if (!nodeId) {
+        cy.elements().removeClass('focus-hidden')
+        return
+      }
+
+      const root = cy.getElementById(nodeId)
+      if (!root || root.empty()) return
+
+      // Build subgraph within N hops
+      let sub = root.union(root.connectedEdges())
+      for (let i = 0; i < depth; i++) {
+        sub = sub.union(sub.neighborhood())
+      }
+
+      cy.elements().addClass('focus-hidden')
+      sub.removeClass('focus-hidden')
+    },
+    [cy],
+  )
+
+  useEffect(() => {
+    applyFocus(focusNodeId, focusDepth)
+  }, [applyFocus, focusNodeId, focusDepth])
 
   const {
     contextNode,
@@ -235,6 +268,16 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
               },
             },
             {
+              selector: '.focus-hidden',
+              style: {
+                opacity: 0.08,
+                'text-opacity': 0,
+                'line-opacity': 0.05,
+                'target-arrow-opacity': 0.05,
+                'z-index': 0,
+              },
+            },
+            {
               selector: 'edge',
               style: {
                 width: 'data(width)',
@@ -257,6 +300,41 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
             },
           ]}
         />
+
+        {/* Focus mode indicator */}
+        {focusNodeId && (
+          <div className="absolute top-4 left-4 bg-indigo-600 text-white px-3 py-2 rounded-lg shadow-lg z-10 flex items-center gap-3">
+            <Target className="w-4 h-4" />
+            <div className="text-sm">
+              <div className="font-medium">Focus: {focusNodeId}</div>
+              <div className="opacity-90">{focusDepth} hop{focusDepth === 1 ? '' : 's'}</div>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                className="p-1 rounded hover:bg-white/10"
+                title="Decrease hops"
+                onClick={() => setFocusDepth(d => Math.max(1, d - 1))}
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <button
+                className="p-1 rounded hover:bg-white/10"
+                title="Increase hops"
+                onClick={() => setFocusDepth(d => Math.min(10, d + 1))}
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+              <button
+                className="p-1 rounded hover:bg-white/10"
+                title="Clear focus"
+                onClick={() => setFocusNodeId(null)}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Edge creation mode indicator */}
         {edgeSource && (
           <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-10 flex items-center gap-2">
@@ -319,6 +397,30 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                   >
                     Rename
                   </ContextMenuItem>
+                  <ContextMenuItem
+                    icon={Target}
+                    onClick={() => {
+                      // If focus mode is already active, keep the current hop count when switching nodes.
+                      setFocusNodeId(contextNode)
+                      if (!focusNodeId) {
+                        setFocusDepth(1)
+                      }
+                      setContextMenuPos(null)
+                    }}
+                  >
+                    Focus ({focusNodeId ? focusDepth : 1} hop{(focusNodeId ? focusDepth : 1) === 1 ? '' : 's'})
+                  </ContextMenuItem>
+                  {focusNodeId && (
+                    <ContextMenuItem
+                      icon={X}
+                      onClick={() => {
+                        setFocusNodeId(null)
+                        setContextMenuPos(null)
+                      }}
+                    >
+                      Clear focus
+                    </ContextMenuItem>
+                  )}
                   <ContextMenuItem
                     icon={Trash2}
                     className="text-red-400 hover:bg-red-900/20"
@@ -537,12 +639,12 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       Color
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <input
                         type="color"
                         value={edgeColor}
@@ -554,7 +656,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                         type="text"
                         value={edgeColor}
                         onChange={e => setEdgeColor(e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                        className="flex-1 min-w-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
                         placeholder="#bdbdbd"
                       />
                     </div>
