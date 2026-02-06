@@ -1,5 +1,5 @@
 import CytoscapeComponent from 'react-cytoscapejs'
-import { Plus, Trash2, Edit3, RotateCcw, Target, X, Minus } from 'lucide-react'
+import { Plus, Trash2, Edit3, RotateCcw, Target, X, Minus, Save } from 'lucide-react'
 import { useGraphContext } from '../contexts/GraphContext/GraphContext'
 import { useTheme } from '../contexts/ThemeContext/ThemeContext'
 import type cytoscape from 'cytoscape'
@@ -15,12 +15,23 @@ interface GraphViewProps {
 }
 
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
-  const { nodes, edges, deleteNode, deleteEdge, addNode, renameNode, updateEdge } =
-    useGraphContext()
+  const {
+    nodes,
+    edges,
+    deleteNode,
+    deleteEdge,
+    addNode,
+    renameNode,
+    updateEdge,
+    setNodePosition,
+  } = useGraphContext()
   const { dark } = useTheme()
+  const hasAnyDotPositions = nodes.some(n => !!n.position)
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
+  const pendingNodePlacementsRef = useRef<Record<string, { x: number; y: number }>>({})
+  const initialLayoutAttemptedRef = useRef(false)
   const [isLayoutRunning, setIsLayoutRunning] = useState(false)
   const [renameValue, setRenameValue] = useState('')
 
@@ -36,21 +47,41 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const sanitizeNodeId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
 
   // Function to manually trigger layout
+  // If some nodes have explicit DOT positions, keep those fixed while laying out the rest.
   const triggerLayout = useCallback(() => {
-    if (cy) {
-      setIsLayoutRunning(true)
-      const layout = cy.layout({
-        name: 'cose',
-        fit: true,
+    if (!cy) return
+
+    setIsLayoutRunning(true)
+
+    const fixedNodeIds = nodes.filter(n => !!n.position).map(n => n.id)
+
+    // Lock fixed nodes so the layout can't move them.
+    cy.batch(() => {
+      for (const id of fixedNodeIds) {
+        const el = cy.getElementById(id)
+        if (!el.empty()) el.lock()
+      }
+    })
+
+    const layout = cy.layout({
+      name: 'cose',
+      fit: true,
+    })
+
+    layout.on('layoutstop', () => {
+      // Unlock fixed nodes after layout so the user can still drag them.
+      cy.batch(() => {
+        for (const id of fixedNodeIds) {
+          const el = cy.getElementById(id)
+          if (!el.empty()) el.unlock()
+        }
       })
 
-      layout.on('layoutstop', () => {
-        setIsLayoutRunning(false)
-      })
+      setIsLayoutRunning(false)
+    })
 
-      layout.run()
-    }
-  }, [cy])
+    layout.run()
+  }, [cy, nodes])
 
   const applyFocus = useCallback(
     (nodeId: string | null, depth: number) => {
@@ -131,12 +162,36 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     setEdgeWidth(edge.data.width ?? 3)
   }, [editingEdge, edges])
 
-  // Run layout on initial load
+  // Run layout on initial load ONLY if there are no explicit DOT positions.
+  // If DOT provides positions, we rely on Cytoscape's `preset` layout instead.
+  // Important: do NOT auto re-layout when nodes are added later (e.g. via context menu).
   useEffect(() => {
-    if (cy && nodes.length > 0) {
+    if (!cy) return
+    if (nodes.length === 0) return
+    if (initialLayoutAttemptedRef.current) return
+
+    if (!hasAnyDotPositions) {
       triggerLayout()
     }
-  }, [cy, nodes.length, triggerLayout]) // Only run when cy is first set
+
+    // Whether we laid out (no positions) or skipped (positions provided), don't auto-run again.
+    initialLayoutAttemptedRef.current = true
+  }, [cy, nodes.length, triggerLayout, hasAnyDotPositions])
+
+  // If we create a node via right-click, we want it to appear at the click location,
+  // but *not* persist coordinates into DOT until the user explicitly saves them.
+  useEffect(() => {
+    if (!cy) return
+
+    const pending = pendingNodePlacementsRef.current
+    for (const [id, pos] of Object.entries(pending)) {
+      const el = cy.getElementById(id)
+      if (el && !el.empty()) {
+        el.position({ x: pos.x, y: pos.y })
+        delete pending[id]
+      }
+    }
+  }, [cy, nodes])
 
   // Keyboard shortcuts using react-hotkeys-hook
   useHotkeys(
@@ -222,24 +277,33 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
           cy={(cyInstance: cytoscape.Core) => {
             setCy(cyInstance)
           }}
-          layout={{
-            name: 'cose',
-            fit: true,
-            padding: 100,
-            nodeDimensionsIncludeLabels: true,
-            nodeRepulsion: 15000,
-            nodeOverlap: 20,
-            idealEdgeLength: 300,
-            edgeElasticity: 0.3,
-            nestingFactor: 0.1,
-            gravity: 40,
-            numIter: 2500,
-            initialTemp: 200,
-            coolingFactor: 0.95,
-            minTemp: 1.0,
-            randomize: true,
-            animate: true,
-          }}
+          layout={
+            hasAnyDotPositions
+              ? {
+                  name: 'preset',
+                  fit: true,
+                  padding: 100,
+                  animate: false,
+                }
+              : {
+                  name: 'cose',
+                  fit: true,
+                  padding: 100,
+                  nodeDimensionsIncludeLabels: true,
+                  nodeRepulsion: 15000,
+                  nodeOverlap: 20,
+                  idealEdgeLength: 300,
+                  edgeElasticity: 0.3,
+                  nestingFactor: 0.1,
+                  gravity: 40,
+                  numIter: 2500,
+                  initialTemp: 200,
+                  coolingFactor: 0.95,
+                  minTemp: 1.0,
+                  randomize: true,
+                  animate: true,
+                }
+          }
           stylesheet={[
             {
               selector: 'node',
@@ -422,6 +486,23 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     </ContextMenuItem>
                   )}
                   <ContextMenuItem
+                    icon={Save}
+                    onClick={() => {
+                      if (!cy) return
+                      const el = cy.getElementById(contextNode)
+                      if (!el || el.empty()) return
+
+                      const pos = el.position()
+                      setNodePosition(contextNode, {
+                        x: Math.round(pos.x),
+                        y: Math.round(pos.y),
+                      })
+                      setContextMenuPos(null)
+                    }}
+                  >
+                    Save Coordinates
+                  </ContextMenuItem>
+                  <ContextMenuItem
                     icon={Trash2}
                     className="text-red-400 hover:bg-red-900/20"
                     onClick={() => {
@@ -512,7 +593,11 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                         }
                       }
                       if (letter) {
-                        addNode({ id: letter, position: { x: adjustedX, y: adjustedY } })
+                        pendingNodePlacementsRef.current[letter] = {
+                          x: adjustedX,
+                          y: adjustedY,
+                        }
+                        addNode({ id: letter })
                       }
                     }
                   }

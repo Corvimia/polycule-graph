@@ -53,6 +53,10 @@ export function useGraph() {
     )
   }, [])
 
+  const setNodePosition = useCallback((id: string, position?: { x: number; y: number }) => {
+    setNodes(nds => nds.map(n => (n.id === id ? { ...n, position } : n)))
+  }, [])
+
   const renameNode = useCallback(
     (id: string, nextId: string, label: string) => {
       if (!nextId) return
@@ -159,6 +163,7 @@ export function useGraph() {
     addNode,
     addEdge,
     updateNode,
+    setNodePosition,
     updateEdge,
     renameNode,
     deleteSelected,

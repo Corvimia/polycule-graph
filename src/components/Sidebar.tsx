@@ -5,6 +5,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useDotDraft } from '../hooks/useDotDraft'
 import { useGraphContext } from '../contexts/GraphContext/GraphContext'
 import ShareDialog from './ShareDialog'
+import DotGuideDialog from './DotGuideDialog'
 import pkg from '../../package.json'
 import { useState } from 'react'
 
@@ -18,6 +19,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, isMobile }: SidebarProps)
   const { dark } = useTheme()
   const { nodes, edges, setNodes, setEdges, copyLink } = useGraphContext()
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+  const [isDotGuideOpen, setIsDotGuideOpen] = useState(false)
   // Link copied state is handled inside ShareDialog
   const {
     dotDraft,
@@ -139,6 +141,16 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, isMobile }: SidebarProps)
               {dotDraftError && (
                 <div className="text-red-500 text-xs mt-2 font-semibold">{dotDraftError}</div>
               )}
+
+              <button
+                type="button"
+                onClick={() => setIsDotGuideOpen(true)}
+                className="mt-2 text-left text-xs font-semibold text-indigo-500 hover:text-indigo-600 underline"
+              >
+                Guide: DOT fields (label/color/edge styles/positions)
+              </button>
+              <DotGuideDialog open={isDotGuideOpen} onOpenChange={setIsDotGuideOpen} />
+
               <button
                 onClick={onSave}
                 disabled={!!dotDraftError || dotDraft === dotValue}
@@ -266,6 +278,16 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, isMobile }: SidebarProps)
         {dotDraftError && (
           <div className="text-red-500 text-xs mt-2 font-semibold">{dotDraftError}</div>
         )}
+
+        <button
+          type="button"
+          onClick={() => setIsDotGuideOpen(true)}
+          className="mt-2 text-left text-xs font-semibold text-indigo-400 hover:text-indigo-300 underline"
+        >
+          Guide: DOT fields (label/color/edge styles/positions)
+        </button>
+        <DotGuideDialog open={isDotGuideOpen} onOpenChange={setIsDotGuideOpen} />
+
         <button
           onClick={onSave}
           disabled={!!dotDraftError || dotDraft === dotValue}
