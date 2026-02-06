@@ -1,5 +1,5 @@
 import CytoscapeComponent from 'react-cytoscapejs'
-import { Plus, Trash2, Edit3, RotateCcw, Target, X, Minus } from 'lucide-react'
+import { Plus, Trash2, Edit3, RotateCcw, Target, X, Minus, Save } from 'lucide-react'
 import { useGraphContext } from '../contexts/GraphContext/GraphContext'
 import { useTheme } from '../contexts/ThemeContext/ThemeContext'
 import type cytoscape from 'cytoscape'
@@ -15,13 +15,22 @@ interface GraphViewProps {
 }
 
 export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
-  const { nodes, edges, deleteNode, deleteEdge, addNode, renameNode, updateEdge } =
-    useGraphContext()
+  const {
+    nodes,
+    edges,
+    deleteNode,
+    deleteEdge,
+    addNode,
+    renameNode,
+    updateEdge,
+    setNodePosition,
+  } = useGraphContext()
   const { dark } = useTheme()
   const hasAnyDotPositions = nodes.some(n => !!n.position)
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
+  const pendingNodePlacementsRef = useRef<Record<string, { x: number; y: number }>>({})
   const [isLayoutRunning, setIsLayoutRunning] = useState(false)
   const [renameValue, setRenameValue] = useState('')
 
@@ -159,6 +168,21 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
       triggerLayout()
     }
   }, [cy, nodes.length, triggerLayout, hasAnyDotPositions]) // Only run when cy is first set
+
+  // If we create a node via right-click, we want it to appear at the click location,
+  // but *not* persist coordinates into DOT until the user explicitly saves them.
+  useEffect(() => {
+    if (!cy) return
+
+    const pending = pendingNodePlacementsRef.current
+    for (const [id, pos] of Object.entries(pending)) {
+      const el = cy.getElementById(id)
+      if (el && !el.empty()) {
+        el.position({ x: pos.x, y: pos.y })
+        delete pending[id]
+      }
+    }
+  }, [cy, nodes])
 
   // Keyboard shortcuts using react-hotkeys-hook
   useHotkeys(
@@ -453,6 +477,23 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     </ContextMenuItem>
                   )}
                   <ContextMenuItem
+                    icon={Save}
+                    onClick={() => {
+                      if (!cy) return
+                      const el = cy.getElementById(contextNode)
+                      if (!el || el.empty()) return
+
+                      const pos = el.position()
+                      setNodePosition(contextNode, {
+                        x: Math.round(pos.x),
+                        y: Math.round(pos.y),
+                      })
+                      setContextMenuPos(null)
+                    }}
+                  >
+                    Save Coordinates
+                  </ContextMenuItem>
+                  <ContextMenuItem
                     icon={Trash2}
                     className="text-red-400 hover:bg-red-900/20"
                     onClick={() => {
@@ -543,7 +584,11 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                         }
                       }
                       if (letter) {
-                        addNode({ id: letter, position: { x: adjustedX, y: adjustedY } })
+                        pendingNodePlacementsRef.current[letter] = {
+                          x: adjustedX,
+                          y: adjustedY,
+                        }
+                        addNode({ id: letter })
                       }
                     }
                   }
