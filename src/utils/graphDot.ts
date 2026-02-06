@@ -7,14 +7,22 @@ export function toDot(nodes: GraphNode[], edges: GraphEdge[]): string {
     const label = node.data?.label
     const color = node.data?.color ? `color="${node.data.color}"` : ''
     const labelAttr = label && label !== node.id ? `label="${label}"` : ''
-    const attrs = [labelAttr, color].filter(Boolean).join(', ')
+
+    // Persist explicit positions back into DOT so they survive "Update".
+    // We use x/y (as requested) rather than graphviz's pos.
+    const xAttr = Number.isFinite(node.position?.x) ? `x="${node.position!.x}"` : ''
+    const yAttr = Number.isFinite(node.position?.y) ? `y="${node.position!.y}"` : ''
+
+    const attrs = [labelAttr, color, xAttr, yAttr].filter(Boolean).join(', ')
     dot += `  "${node.id}"${attrs ? ` [${attrs}]` : ''};\n`
   }
   for (const edge of edges) {
     const label = edge.data?.label ? `label="${edge.data.label}"` : ''
     const color = edge.data?.color ? `color="${edge.data.color}"` : ''
     const width = edge.data?.width ? `penwidth=${edge.data.width}` : ''
-    const attrs = [label, color, width].filter(Boolean).join(', ')
+    const pattern =
+      edge.data?.pattern && edge.data.pattern !== 'solid' ? `style="${edge.data.pattern}"` : ''
+    const attrs = [label, color, width, pattern].filter(Boolean).join(', ')
     dot += `  "${edge.source}" -- "${edge.target}"${attrs ? ` [${attrs}]` : ''};\n`
   }
   dot += '}'
@@ -34,7 +42,19 @@ export function dotAstToCytoscape(ast: DotAst): { nodes: GraphNode[]; edges: Gra
     return v
   }
 
-  function parsePos(posRaw: string | undefined): { x: number; y: number } | undefined {
+  function parsePos(
+    posRaw: string | undefined,
+    xRaw?: string | undefined,
+    yRaw?: string | undefined,
+  ): { x: number; y: number } | undefined {
+    // Preferred (app-specific) form: x/y attributes
+    if (xRaw != null || yRaw != null) {
+      const x = Number.parseFloat(unquote(xRaw ?? ''))
+      const y = Number.parseFloat(unquote(yRaw ?? ''))
+      if (Number.isFinite(x) && Number.isFinite(y)) return { x, y }
+    }
+
+    // Fallback: graphviz-like pos="x,y" (or x,y!)
     if (!posRaw) return undefined
     // Common Graphviz-ish forms we might see:
     // - "12,34"
@@ -66,7 +86,7 @@ export function dotAstToCytoscape(ast: DotAst): { nodes: GraphNode[]; edges: Gra
         nodeSet.add(id)
         const attrs = getAttrs(child.attr_list)
         const label = attrs.label && attrs.label !== id ? attrs.label : undefined
-        const pos = parsePos(attrs.pos)
+        const pos = parsePos(attrs.pos, attrs.x, attrs.y)
         nodes.push({
           id,
           ...(pos ? { position: pos } : {}),
@@ -97,6 +117,7 @@ export function dotAstToCytoscape(ast: DotAst): { nodes: GraphNode[]; edges: Gra
               ...(attrs.label ? { label: attrs.label } : {}),
               ...(attrs.color ? { color: attrs.color } : {}),
               ...(attrs.penwidth ? { width: Number(attrs.penwidth) } : {}),
+              ...(attrs.style ? { pattern: attrs.style as 'solid' | 'dashed' | 'dotted' } : {}),
             },
             style: {
               ...(attrs.color ? { stroke: attrs.color } : {}),
