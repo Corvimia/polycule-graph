@@ -37,21 +37,41 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const sanitizeNodeId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
 
   // Function to manually trigger layout
+  // If some nodes have explicit DOT positions, keep those fixed while laying out the rest.
   const triggerLayout = useCallback(() => {
-    if (cy) {
-      setIsLayoutRunning(true)
-      const layout = cy.layout({
-        name: 'cose',
-        fit: true,
+    if (!cy) return
+
+    setIsLayoutRunning(true)
+
+    const fixedNodeIds = nodes.filter(n => !!n.position).map(n => n.id)
+
+    // Lock fixed nodes so the layout can't move them.
+    cy.batch(() => {
+      for (const id of fixedNodeIds) {
+        const el = cy.getElementById(id)
+        if (!el.empty()) el.lock()
+      }
+    })
+
+    const layout = cy.layout({
+      name: 'cose',
+      fit: true,
+    })
+
+    layout.on('layoutstop', () => {
+      // Unlock fixed nodes after layout so the user can still drag them.
+      cy.batch(() => {
+        for (const id of fixedNodeIds) {
+          const el = cy.getElementById(id)
+          if (!el.empty()) el.unlock()
+        }
       })
 
-      layout.on('layoutstop', () => {
-        setIsLayoutRunning(false)
-      })
+      setIsLayoutRunning(false)
+    })
 
-      layout.run()
-    }
-  }, [cy])
+    layout.run()
+  }, [cy, nodes])
 
   const applyFocus = useCallback(
     (nodeId: string | null, depth: number) => {
