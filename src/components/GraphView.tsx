@@ -31,6 +31,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const pendingNodePlacementsRef = useRef<Record<string, { x: number; y: number }>>({})
+  const initialLayoutAttemptedRef = useRef(false)
   const [isLayoutRunning, setIsLayoutRunning] = useState(false)
   const [renameValue, setRenameValue] = useState('')
 
@@ -163,11 +164,19 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
 
   // Run layout on initial load ONLY if there are no explicit DOT positions.
   // If DOT provides positions, we rely on Cytoscape's `preset` layout instead.
+  // Important: do NOT auto re-layout when nodes are added later (e.g. via context menu).
   useEffect(() => {
-    if (cy && nodes.length > 0 && !hasAnyDotPositions) {
+    if (!cy) return
+    if (nodes.length === 0) return
+    if (initialLayoutAttemptedRef.current) return
+
+    if (!hasAnyDotPositions) {
       triggerLayout()
     }
-  }, [cy, nodes.length, triggerLayout, hasAnyDotPositions]) // Only run when cy is first set
+
+    // Whether we laid out (no positions) or skipped (positions provided), don't auto-run again.
+    initialLayoutAttemptedRef.current = true
+  }, [cy, nodes.length, triggerLayout, hasAnyDotPositions])
 
   // If we create a node via right-click, we want it to appear at the click location,
   // but *not* persist coordinates into DOT until the user explicitly saves them.
