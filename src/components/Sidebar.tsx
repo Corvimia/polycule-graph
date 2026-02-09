@@ -186,7 +186,17 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, isMobile }: SidebarProps)
                   : 'py-3 text-center text-xs text-indigo-400 font-medium'
               }
             >
-              made with love by{' '}
+              <a
+                href="https://github.com/Corvimia/polycule-graph/issues/new/choose"
+                target="_blank"
+                rel="noreferrer"
+                className={
+                  dark ? 'text-white underline font-bold' : 'text-indigo-600 underline font-bold'
+                }
+              >
+                feedback
+              </a>{' '}
+              • made with love by{' '}
               <a
                 href="https://github.com/Corvimia"
                 target="_blank"
@@ -323,7 +333,17 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, isMobile }: SidebarProps)
             : 'py-3 text-center text-xs text-indigo-400 font-medium'
         }
       >
-        made with love by{' '}
+        <a
+          href="https://github.com/Corvimia/polycule-graph/issues/new/choose"
+          target="_blank"
+          rel="noreferrer"
+          className={
+            dark ? 'text-white underline font-bold' : 'text-indigo-600 underline font-bold'
+          }
+        >
+          feedback
+        </a>{' '}
+        • made with love by{' '}
         <a
           href="https://github.com/Corvimia"
           target="_blank"
