@@ -21,7 +21,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     deleteNode,
     deleteEdge,
     addNode,
-    renameNode,
+    updateNode,
     updateEdge,
     setNodePosition,
   } = useGraphContext()
@@ -29,11 +29,12 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const hasAnyDotPositions = nodes.some(n => !!n.position)
   const [cy, setCy] = useState<cytoscape.Core | undefined>(undefined)
   const contextMenuRef = useRef<HTMLDivElement>(null)
-  const renameInputRef = useRef<HTMLInputElement>(null)
+  const nodeEditNameInputRef = useRef<HTMLInputElement>(null)
   const pendingNodePlacementsRef = useRef<Record<string, { x: number; y: number }>>({})
   const initialLayoutAttemptedRef = useRef(false)
   const [isLayoutRunning, setIsLayoutRunning] = useState(false)
-  const [renameValue, setRenameValue] = useState('')
+  const [nodeEditLabel, setNodeEditLabel] = useState('')
+  const [nodeEditColor, setNodeEditColor] = useState<string>('#bdbdbd')
 
   const [editingEdge, setEditingEdge] = useState<string | null>(null)
   const [edgePattern, setEdgePattern] = useState<'solid' | 'dashed' | 'dotted'>('solid')
@@ -44,7 +45,6 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null)
   const [focusDepth, setFocusDepth] = useState<number>(1)
 
-  const sanitizeNodeId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
 
   // Function to manually trigger layout
   // If some nodes have explicit DOT positions, keep those fixed while laying out the rest.
@@ -122,19 +122,6 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     setEdgeSource,
     setRenamingNode,
   } = useCytoscapeInteractions(cy)
-  const sanitizedRenameId = sanitizeNodeId(renameValue)
-  const hasDuplicateId =
-    !!renamingNode &&
-    sanitizedRenameId.length > 0 &&
-    sanitizedRenameId !== renamingNode &&
-    nodes.some(n => n.id === sanitizedRenameId)
-  const renameError =
-    sanitizedRenameId.length === 0
-      ? 'ID must include at least one letter or number.'
-      : hasDuplicateId
-        ? 'ID already exists.'
-        : ''
-
   // Close context menu on click elsewhere
   useEffect(() => {
     const handleClick = () => setContextMenuPos(null)
@@ -144,10 +131,11 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     }
   }, [contextMenuPos, setContextMenuPos])
 
-  // Reset rename value when dialog closes
+  // Reset node edit values when dialog closes
   useEffect(() => {
     if (!renamingNode) {
-      setRenameValue('')
+      setNodeEditLabel('')
+      setNodeEditColor('#bdbdbd')
     }
   }, [renamingNode])
 
@@ -454,12 +442,17 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     icon={Edit3}
                     onClick={() => {
                       const node = nodes.find(n => n.id === contextNode)
-                      setRenameValue(node?.data.label || contextNode)
+                      const label = node?.data.label ?? contextNode
+                      const color = node?.data.color ?? stringToColor(label)
+                      setNodeEditLabel(label)
+                      setNodeEditColor(color)
                       setRenamingNode(contextNode)
                       setContextMenuPos(null)
+                      // Ensure the input focuses after open
+                      setTimeout(() => nodeEditNameInputRef.current?.focus(), 0)
                     }}
                   >
-                    Rename
+                    Edit Node
                   </ContextMenuItem>
                   <ContextMenuItem
                     icon={Target}
@@ -610,55 +603,84 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
           )}
         </ContextMenuRoot>
 
-        {/* Rename Node Dialog */}
+        {/* Edit Node Dialog */}
         {renamingNode && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl max-w-sm w-full mx-4">
               <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
-                Rename Node
+                Edit Node
               </h3>
-              <input
-                ref={renameInputRef}
-                type="text"
-                value={renameValue}
-                onChange={e => setRenameValue(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                autoFocus
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    if (!renamingNode || renameError) return
-                    const newLabel = (e.target as HTMLInputElement).value
-                    renameNode(renamingNode, sanitizedRenameId, newLabel)
-                    setRenamingNode(null)
-                  } else if (e.key === 'Escape') {
-                    setRenamingNode(null)
-                  }
-                }}
-              />
-              <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                ID: <span className="font-mono">{sanitizedRenameId || '—'}</span>
-              </div>
-              {renameError && (
-                <div className="mt-2 text-sm text-red-600 dark:text-red-400">{renameError}</div>
-              )}
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={() => setRenamingNode(null)}
-                  className="flex-1 px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (!renamingNode || renameError) return
-                    renameNode(renamingNode, sanitizedRenameId, renameValue)
-                    setRenamingNode(null)
-                  }}
-                  disabled={!!renameError || !renamingNode}
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:text-gray-200 transition-colors"
-                >
-                  Rename
-                </button>
+
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Name
+                  </div>
+                  <input
+                    ref={nodeEditNameInputRef}
+                    type="text"
+                    value={nodeEditLabel}
+                    onChange={e => setNodeEditLabel(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    autoFocus
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && renamingNode) {
+                        updateNode(renamingNode, {
+                          label: nodeEditLabel.trim() || renamingNode,
+                          color: nodeEditColor,
+                        })
+                        setRenamingNode(null)
+                      } else if (e.key === 'Escape') {
+                        setRenamingNode(null)
+                      }
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Colour
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={nodeEditColor}
+                      onChange={e => setNodeEditColor(e.target.value)}
+                      className="h-10 w-12 rounded border border-gray-300 dark:border-gray-600 bg-transparent"
+                      aria-label="Node colour"
+                    />
+                    <input
+                      type="text"
+                      value={nodeEditColor}
+                      onChange={e => setNodeEditColor(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                      placeholder="#bdbdbd"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => setRenamingNode(null)}
+                    className="flex-1 px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!renamingNode) return
+                      updateNode(renamingNode, {
+                        label: nodeEditLabel.trim() || renamingNode,
+                        color: nodeEditColor,
+                      })
+                      setRenamingNode(null)
+                    }}
+                    disabled={!renamingNode}
+                    className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:text-gray-200 transition-colors"
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
             </div>
           </div>
