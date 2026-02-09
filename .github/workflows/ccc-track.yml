@@ -1,0 +1,207 @@
+name: ccc-track (label + wake OpenClaw)
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  issue_comment:
+    types: [created, edited]
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created, edited]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: ccc-track-${{ github.repository }}-${{ github.event_name }}-${{ github.event.action }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  track-and-wake:
+    # extra safety: never run outside Corvimia/*
+    if: ${{ github.repository_owner == 'Corvimia' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build payload, apply ccc-track label, and decide whether to wake
+        id: build
+        uses: actions/github-script@v7
+        env:
+          TRACK_LABEL: ccc-track
+          MENTION_USER: CoralCorvusCortex
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const trackLabel = process.env.TRACK_LABEL;
+            const mentionUser = process.env.MENTION_USER;
+
+            const mentionRe = new RegExp(`@${mentionUser}\\b`, 'i');
+
+            function trunc(s, max) {
+              if (!s) return '';
+              if (s.length <= max) return s;
+              return s.slice(0, max) + `\n…(truncated ${s.length - max} chars)`;
+            }
+
+            // Determine the thread (issue/pr) and the content object for this event
+            const p = context.payload;
+
+            // Thread
+            const issueLike = p.issue;
+            const prLike = p.pull_request;
+
+            let threadType = null;
+            let number = null;
+            let title = null;
+            let htmlUrl = null;
+
+            if (issueLike) {
+              threadType = issueLike.pull_request ? 'pr' : 'issue';
+              number = issueLike.number;
+              title = issueLike.title;
+              htmlUrl = issueLike.html_url;
+            } else if (prLike) {
+              threadType = 'pr';
+              number = prLike.number;
+              title = prLike.title;
+              htmlUrl = prLike.html_url;
+            } else {
+              core.setFailed('Unsupported payload: expected issue or pull_request');
+              return;
+            }
+
+            // Content
+            let contentKind = null;
+            let contentUrl = null;
+            let contentBody = '';
+
+            if (p.comment) {
+              // issue_comment or pull_request_review_comment
+              contentKind = (context.eventName === 'pull_request_review_comment') ? 'pr_review_comment' : 'issue_comment';
+              contentUrl = p.comment.html_url;
+              contentBody = p.comment.body || '';
+            } else if (p.review) {
+              // pull_request_review
+              contentKind = 'pr_review';
+              contentUrl = (p.review.html_url || (prLike ? `${prLike.html_url}#pullrequestreview-${p.review.id}` : null));
+              contentBody = p.review.body || '';
+            } else if (issueLike) {
+              // issues opened/edited
+              contentKind = 'issue_body';
+              contentUrl = issueLike.html_url;
+              contentBody = issueLike.body || '';
+            } else if (prLike) {
+              // pull_request opened/edited/synchronize
+              contentKind = 'pr_body';
+              contentUrl = prLike.html_url;
+              contentBody = prLike.body || '';
+            }
+
+            const mentionDetected = mentionRe.test(contentBody);
+
+            // Helper: fetch live labels from GitHub (don’t trust payload)
+            async function fetchLabels() {
+              const res = await github.rest.issues.get({ owner, repo, issue_number: number });
+              const labels = (res.data.labels || []).map(l => (typeof l === 'string' ? l : l.name)).filter(Boolean);
+              return labels;
+            }
+
+            // Apply label on mention (idempotent)
+            if (mentionDetected) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: number,
+                labels: [trackLabel],
+              });
+            }
+
+            const labels = await fetchLabels();
+            const tracked = labels.map(l => String(l).toLowerCase()).includes(trackLabel.toLowerCase());
+
+            // Wake on original mention OR on any activity for tracked threads
+            const shouldWake = mentionDetected || tracked;
+
+            const payload = {
+              source: 'github',
+              schema: 'ccc-track/v1',
+              idempotencyKey: `gh:${context.runId}:${context.runAttempt}`,
+              event: {
+                name: context.eventName,
+                action: p.action || null,
+                run: { id: context.runId, attempt: context.runAttempt },
+              },
+              repo: {
+                owner,
+                name: repo,
+                full_name: `${owner}/${repo}`,
+                html_url: `https://github.com/${owner}/${repo}`,
+              },
+              actor: {
+                login: context.actor,
+                html_url: `https://github.com/${context.actor}`,
+              },
+              thread: {
+                type: threadType,
+                number,
+                title,
+                html_url: htmlUrl,
+                labels,
+              },
+              content: {
+                kind: contentKind,
+                html_url: contentUrl,
+                body: trunc(contentBody, 12000),
+                body_truncated: (contentBody || '').length > 12000,
+              },
+              signals: {
+                mention_user: `@${mentionUser}`,
+                mention_detected: mentionDetected,
+                tracked,
+                should_wake: shouldWake,
+              },
+            };
+
+            const json = JSON.stringify(payload);
+            const jsonB64 = Buffer.from(json, 'utf8').toString('base64');
+
+            core.setOutput('should_wake', shouldWake ? 'true' : 'false');
+            core.setOutput('json_b64', jsonB64);
+
+      - name: POST to OpenClaw mapped hook (/hooks/github)
+        if: ${{ steps.build.outputs.should_wake == 'true' }}
+        env:
+          OPENCLAW_BASE_URL: ${{ secrets.OPENCLAW_BASE_URL }}
+          OPENCLAW_HOOK_TOKEN: ${{ secrets.OPENCLAW_HOOK_TOKEN }}
+          JSON_B64: ${{ steps.build.outputs.json_b64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${OPENCLAW_BASE_URL:-}" ]]; then
+            echo "Missing secret: OPENCLAW_BASE_URL" >&2
+            exit 1
+          fi
+
+          if [[ -z "${OPENCLAW_HOOK_TOKEN:-}" ]]; then
+            echo "Missing secret: OPENCLAW_HOOK_TOKEN" >&2
+            exit 1
+          fi
+
+          tmpfile="$(mktemp)"
+          trap 'rm -f "$tmpfile"' EXIT
+
+          echo "$JSON_B64" | base64 -d > "$tmpfile"
+
+          # Avoid leaking payload/token into logs. Keep curl quiet unless failing.
+          curl --fail-with-body --silent --show-error \
+            -X POST "${OPENCLAW_BASE_URL%/}/hooks/github" \
+            -H "Authorization: Bearer ${OPENCLAW_HOOK_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-binary "@$tmpfile"
