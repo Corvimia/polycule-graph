@@ -36,6 +36,8 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const [renameValue, setRenameValue] = useState('')
 
   const [editingEdge, setEditingEdge] = useState<string | null>(null)
+  const [edgeLabel, setEdgeLabel] = useState('')
+  const [edgeLabelMode, setEdgeLabelMode] = useState<'always' | 'hover'>('always')
   const [edgePattern, setEdgePattern] = useState<'solid' | 'dashed' | 'dotted'>('solid')
   const [edgeColor, setEdgeColor] = useState<string>('#bdbdbd')
   const [edgeWidth, setEdgeWidth] = useState<number>(3)
@@ -157,6 +159,8 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     const edge = edges.find(e => e.id === editingEdge)
     if (!edge) return
 
+    setEdgeLabel(edge.data.label ?? '')
+    setEdgeLabelMode(edge.data.labelMode ?? 'always')
     setEdgePattern(edge.data.pattern ?? 'solid')
     setEdgeColor(edge.data.color ?? '#bdbdbd')
     setEdgeWidth(edge.data.width ?? 3)
@@ -257,6 +261,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 source: e.source,
                 target: e.target,
                 label: e.data.label ?? '',
+                labelMode: e.data.labelMode ?? 'always',
                 color: e.data.color ?? '#bdbdbd',
                 width: e.data.width ?? 3,
                 pattern: e.data.pattern ?? 'solid',
@@ -354,6 +359,18 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 color: '#a5b4fc',
                 'target-arrow-shape': 'none',
                 opacity: 0.95,
+              },
+            },
+            {
+              selector: 'edge[labelMode = "hover"]',
+              style: {
+                'text-opacity': 0,
+              },
+            },
+            {
+              selector: 'edge[labelMode = "hover"]:hover',
+              style: {
+                'text-opacity': 1,
               },
             },
             {
@@ -675,6 +692,38 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
               <div className="space-y-4">
                 <div>
                   <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Label
+                  </div>
+                  <input
+                    type="text"
+                    value={edgeLabel}
+                    onChange={e => setEdgeLabel(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="(optional)"
+                  />
+
+                  <div className="mt-3 flex items-center gap-4">
+                    {(
+                      [
+                        { value: 'always', label: 'Always' },
+                        { value: 'hover', label: 'On hover' },
+                      ] as const
+                    ).map(opt => (
+                      <label key={opt.value} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="radio"
+                          name="edge-label-mode"
+                          value={opt.value}
+                          checked={edgeLabelMode === opt.value}
+                          onChange={() => setEdgeLabelMode(opt.value)}
+                        />
+                        <span className="text-gray-800 dark:text-gray-100">{opt.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Pattern
                   </div>
                   <div className="space-y-2">
@@ -781,6 +830,8 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                   onClick={() => {
                     if (!editingEdge) return
                     updateEdge(editingEdge, {
+                      label: edgeLabel.trim(),
+                      labelMode: edgeLabelMode,
                       color: edgeColor,
                       width: edgeWidth,
                       pattern: edgePattern,

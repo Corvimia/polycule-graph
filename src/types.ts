@@ -17,8 +17,16 @@ export interface GraphNode {
 
 export type EdgePattern = 'solid' | 'dashed' | 'dotted'
 
+export type EdgeLabelMode = 'always' | 'hover'
+
 export interface GraphEdgeData {
   label?: string
+  /**
+   * How edge labels are shown in the UI.
+   * - always: label is always visible
+   * - hover: label is only visible when hovering the edge
+   */
+  labelMode?: EdgeLabelMode
   color?: string
   width?: number
   pattern?: EdgePattern
