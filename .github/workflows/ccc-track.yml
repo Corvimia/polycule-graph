@@ -175,13 +175,12 @@ jobs:
             core.setOutput('should_wake', shouldWake ? 'true' : 'false');
             core.setOutput('json_b64', jsonB64);
 
-      - name: Connect to Tailscale (ephemeral)
+      - name: Connect to Tailscale
         if: ${{ steps.build.outputs.should_wake == 'true' }}
         uses: tailscale/github-action@v3
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          ephemeral: true
           # If your tailnet requires tags for CI nodes, uncomment and ensure ACLs allow it:
           # tags: tag:github-actions
 
