@@ -181,8 +181,7 @@ jobs:
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          # If your tailnet requires tags for CI nodes, uncomment and ensure ACLs allow it:
-          # tags: tag:github-actions
+          tags: tag:github-actions
 
       - name: POST to OpenClaw mapped hook (/hooks/github)
         if: ${{ steps.build.outputs.should_wake == 'true' }}
