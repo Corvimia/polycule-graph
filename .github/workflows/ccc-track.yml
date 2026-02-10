@@ -16,6 +16,7 @@ permissions:
   contents: read
   issues: write
   pull-requests: write
+  id-token: write
 
 concurrency:
   group: ccc-track-${{ github.repository }}-${{ github.event_name }}-${{ github.event.action }}-${{ github.run_id }}
@@ -174,20 +175,25 @@ jobs:
             core.setOutput('should_wake', shouldWake ? 'true' : 'false');
             core.setOutput('json_b64', jsonB64);
 
+      - name: Connect to Tailscale (ephemeral)
+        if: ${{ steps.build.outputs.should_wake == 'true' }}
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          ephemeral: true
+          # If your tailnet requires tags for CI nodes, uncomment and ensure ACLs allow it:
+          # tags: tag:github-actions
+
       - name: POST to OpenClaw mapped hook (/hooks/github)
         if: ${{ steps.build.outputs.should_wake == 'true' }}
         env:
-          OPENCLAW_BASE_URL: ${{ secrets.OPENCLAW_BASE_URL }}
+          OPENCLAW_BASE_URL: https://synthetic-cognition-lab.tiger-cardassian.ts.net/
           OPENCLAW_HOOK_TOKEN: ${{ secrets.OPENCLAW_HOOK_TOKEN }}
           JSON_B64: ${{ steps.build.outputs.json_b64 }}
         shell: bash
         run: |
           set -euo pipefail
-
-          if [[ -z "${OPENCLAW_BASE_URL:-}" ]]; then
-            echo "Missing secret: OPENCLAW_BASE_URL" >&2
-            exit 1
-          fi
 
           if [[ -z "${OPENCLAW_HOOK_TOKEN:-}" ]]; then
             echo "Missing secret: OPENCLAW_HOOK_TOKEN" >&2
