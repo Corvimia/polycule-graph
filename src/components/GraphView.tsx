@@ -254,20 +254,29 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 },
               }
             }),
-            ...edges.map(e => ({
-              ...e,
-              data: {
-                id: e.id,
-                source: e.source,
-                target: e.target,
-                label: e.data.label ?? '',
-                labelMode: e.data.labelMode ?? 'always',
-                color: e.data.color ?? '#bdbdbd',
-                width: e.data.width ?? 3,
-                pattern: e.data.pattern ?? 'solid',
-                directed: e.directed !== false, // default to true if undefined
-              },
-            })),
+            ...edges.map(e => {
+              const labelMode = e.data.labelMode ?? 'always'
+              const modeClass = labelMode === 'hover' ? 'edge-label-hover' : 'edge-label-always'
+              const maybeWithClasses = e as unknown as { classes?: unknown }
+              const existingClasses = typeof maybeWithClasses.classes === 'string' ? maybeWithClasses.classes : ''
+              const classes = [existingClasses, modeClass].filter(Boolean).join(' ')
+
+              return {
+                ...e,
+                classes,
+                data: {
+                  id: e.id,
+                  source: e.source,
+                  target: e.target,
+                  label: e.data.label ?? '',
+                  labelMode,
+                  color: e.data.color ?? '#bdbdbd',
+                  width: e.data.width ?? 3,
+                  pattern: e.data.pattern ?? 'solid',
+                  directed: e.directed !== false, // default to true if undefined
+                },
+              }
+            }),
           ]}
           style={{
             width: '80vw',
@@ -354,23 +363,39 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 'target-arrow-color': 'data(color)',
                 'line-style': 'data(pattern)',
                 'curve-style': 'bezier',
+
+                // Labels
                 label: 'data(label)',
-                'font-size': 16,
-                color: '#a5b4fc',
+                'font-size': 14,
+                color: '#e5e7eb',
+                'text-wrap': 'wrap',
+                'text-max-width': 160,
+                'text-background-color': '#000',
+                'text-background-opacity': 0.45,
+                'text-background-shape': 'roundrectangle',
+                'text-background-padding': 4,
+                'text-outline-color': '#000',
+                'text-outline-width': 2,
+                'text-outline-opacity': 0.35,
+
                 'target-arrow-shape': 'none',
                 opacity: 0.95,
               },
             },
             {
-              selector: 'edge[labelMode = "hover"]',
+              selector: 'edge.edge-label-hover',
               style: {
                 'text-opacity': 0,
+                'text-background-opacity': 0,
+                'text-outline-opacity': 0,
               },
             },
             {
-              selector: 'edge[labelMode = "hover"]:hover',
+              selector: 'edge.edge-label-hover:hover',
               style: {
                 'text-opacity': 1,
+                'text-background-opacity': 0.45,
+                'text-outline-opacity': 0.35,
               },
             },
             {
