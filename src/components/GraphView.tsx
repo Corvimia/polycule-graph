@@ -102,6 +102,24 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
 
   const sanitizeNodeId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
 
+  const renameNodePreservingPosition = useCallback(
+    (id: string, nextId: string, label: string) => {
+      // Cytoscape element IDs are effectively immutable; renaming forces a Cytoscape remount.
+      // Preserve the current on-screen coordinate by copying it to the new node ID in our
+      // ephemeral position cache (without persisting to DOT/state).
+      const cached = nodePositionCacheRef.current[id]
+      const live = cy ? cy.getElementById(id) : null
+      const pos = live && !live.empty() ? live.position() : cached
+      if (pos) {
+        nodePositionCacheRef.current[nextId] = { x: pos.x, y: pos.y }
+        delete nodePositionCacheRef.current[id]
+      }
+
+      renameNode(id, nextId, label)
+    },
+    [cy, renameNode],
+  )
+
   // Function to manually trigger layout
   // If some nodes have explicit DOT positions, keep those fixed while laying out the rest.
   const triggerLayout = useCallback(() => {
@@ -733,7 +751,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                       if (e.key === 'Enter') {
                         if (!renamingNode || renameError) return
                         const nextLabel = nodeEditLabel.trim()
-                        renameNode(renamingNode, sanitizedNextNodeId, nextLabel)
+                        renameNodePreservingPosition(renamingNode, sanitizedNextNodeId, nextLabel)
                         updateNode(sanitizedNextNodeId, {
                           label: nextLabel,
                           color: normalizeColorToHex(nodeEditColor),
@@ -787,7 +805,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     onClick={() => {
                       if (!renamingNode || renameError) return
                       const nextLabel = nodeEditLabel.trim()
-                      renameNode(renamingNode, sanitizedNextNodeId, nextLabel)
+                      renameNodePreservingPosition(renamingNode, sanitizedNextNodeId, nextLabel)
                       updateNode(sanitizedNextNodeId, {
                         label: nextLabel,
                         color: normalizeColorToHex(nodeEditColor),
