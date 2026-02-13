@@ -3,7 +3,7 @@ import { Plus, Trash2, Edit3, RotateCcw, Target, X, Minus, Save } from 'lucide-r
 import { useGraphContext } from '../contexts/GraphContext/GraphContext'
 import { useTheme } from '../contexts/ThemeContext/ThemeContext'
 import type cytoscape from 'cytoscape'
-import { stringToColor } from '../utils/graphDot'
+import { normalizeColorToHex, stringToColor } from '../utils/graphDot'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useCytoscapeInteractions } from '../hooks/useCytoscapeInteractions'
 import { ContextMenu, ContextMenuItem, ContextMenuRoot } from './ui/context-menu'
@@ -250,7 +250,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                 data: {
                   id: n.id,
                   label,
-                  color: n.data.color ?? stringToColor(label), // hash-based color
+                  color: normalizeColorToHex(n.data.color ?? stringToColor(label)), // hash-based color
                 },
               }
             }),
@@ -459,7 +459,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     onClick={() => {
                       const node = nodes.find(n => n.id === contextNode)
                       const label = node?.data.label ?? contextNode
-                      const color = node?.data.color ?? stringToColor(label)
+                      const color = normalizeColorToHex(node?.data.color ?? stringToColor(label))
 
                       setNodeEditLabel(label)
                       setNodeEditColor(color)
@@ -646,7 +646,10 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                         if (!renamingNode || renameError) return
                         const nextLabel = nodeEditLabel.trim()
                         renameNode(renamingNode, sanitizedNextNodeId, nextLabel)
-                        updateNode(sanitizedNextNodeId, { label: nextLabel, color: nodeEditColor })
+                        updateNode(sanitizedNextNodeId, {
+                          label: nextLabel,
+                          color: normalizeColorToHex(nodeEditColor),
+                        })
                         setRenamingNode(null)
                       } else if (e.key === 'Escape') {
                         setRenamingNode(null)
@@ -669,14 +672,16 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     <input
                       type="color"
                       value={nodeEditColor}
-                      onChange={e => setNodeEditColor(e.target.value)}
+                      onChange={e => setNodeEditColor(normalizeColorToHex(e.target.value, nodeEditColor))}
                       className="h-10 w-12 rounded border border-gray-300 dark:border-gray-600 bg-transparent"
                       aria-label="Node colour"
                     />
                     <input
                       type="text"
                       value={nodeEditColor}
-                      onChange={e => setNodeEditColor(e.target.value)}
+                      onChange={e =>
+                        setNodeEditColor(normalizeColorToHex(e.target.value, nodeEditColor))
+                      }
                       className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
                       placeholder="#bdbdbd"
                     />
@@ -695,7 +700,10 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                       if (!renamingNode || renameError) return
                       const nextLabel = nodeEditLabel.trim()
                       renameNode(renamingNode, sanitizedNextNodeId, nextLabel)
-                      updateNode(sanitizedNextNodeId, { label: nextLabel, color: nodeEditColor })
+                      updateNode(sanitizedNextNodeId, {
+                        label: nextLabel,
+                        color: normalizeColorToHex(nodeEditColor),
+                      })
                       setRenamingNode(null)
                     }}
                     disabled={!!renameError || !renamingNode}

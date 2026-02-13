@@ -147,7 +147,86 @@ export function dotAstToCytoscape(ast: DotAst): { nodes: GraphNode[]; edges: Gra
   return { nodes, edges }
 }
 
-// Hash a string to a color (HSL)
+function clamp01(n: number): number {
+  return Math.min(1, Math.max(0, n))
+}
+
+function toHexByte(n: number): string {
+  return Math.round(n).toString(16).padStart(2, '0')
+}
+
+// Adapted from the CSS Color Module formulae.
+function hslToHex(h: number, sPct: number, lPct: number): string {
+  const hNorm = ((h % 360) + 360) % 360
+  const s = clamp01(sPct / 100)
+  const l = clamp01(lPct / 100)
+
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs(((hNorm / 60) % 2) - 1))
+  const m = l - c / 2
+
+  let r1 = 0
+  let g1 = 0
+  let b1 = 0
+
+  if (hNorm < 60) {
+    r1 = c
+    g1 = x
+  } else if (hNorm < 120) {
+    r1 = x
+    g1 = c
+  } else if (hNorm < 180) {
+    g1 = c
+    b1 = x
+  } else if (hNorm < 240) {
+    g1 = x
+    b1 = c
+  } else if (hNorm < 300) {
+    r1 = x
+    b1 = c
+  } else {
+    r1 = c
+    b1 = x
+  }
+
+  const r = (r1 + m) * 255
+  const g = (g1 + m) * 255
+  const b = (b1 + m) * 255
+
+  return `#${toHexByte(r)}${toHexByte(g)}${toHexByte(b)}`
+}
+
+export function normalizeColorToHex(color: string | undefined, fallback = '#bdbdbd'): string {
+  if (!color) return fallback
+
+  const hexMatch = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)
+  if (hexMatch) {
+    const raw = hexMatch[1]
+    if (raw.length === 3) {
+      const r = raw[0]
+      const g = raw[1]
+      const b = raw[2]
+      return `#${r}${r}${g}${g}${b}${b}`.toLowerCase()
+    }
+    return `#${raw}`.toLowerCase()
+  }
+
+  const hslMatch = color
+    .trim()
+    .match(/^hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)$/i)
+  if (hslMatch) {
+    const h = Number(hslMatch[1])
+    const s = Number(hslMatch[2])
+    const l = Number(hslMatch[3])
+    if ([h, s, l].every(n => Number.isFinite(n))) {
+      return hslToHex(h, s, l)
+    }
+  }
+
+  return fallback
+}
+
+// Hash a string to a color (HEX)
 export function stringToColor(str: string): string {
   let hash = 5381
   for (let i = 0; i < str.length; i++) {
@@ -158,5 +237,5 @@ export function stringToColor(str: string): string {
   const h = Math.abs(hash + charSum * 31) % 360
   const s = 65 + (charSum % 20) // 65-85%
   const l = 55 + (hash % 10) // 55-64%
-  return `hsl(${h}, ${s}%, ${l}%)`
+  return hslToHex(h, s, l)
 }
