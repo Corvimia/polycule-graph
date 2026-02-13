@@ -36,6 +36,10 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const [isLayoutRunning, setIsLayoutRunning] = useState(false)
   const [nodeEditLabel, setNodeEditLabel] = useState('')
   const [nodeEditColor, setNodeEditColor] = useState<string>('#bdbdbd')
+  // Track whether the user explicitly changed the node colour in the edit dialog.
+  // If not, we should avoid writing a derived/default colour back into the DOT.
+  const [nodeEditColorDirty, setNodeEditColorDirty] = useState(false)
+  const [nodeEditColorWasExplicit, setNodeEditColorWasExplicit] = useState(false)
 
   const [editingEdge, setEditingEdge] = useState<string | null>(null)
   const [edgeLabel, setEdgeLabel] = useState('')
@@ -501,10 +505,13 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     onClick={() => {
                       const node = nodes.find(n => n.id === contextNode)
                       const label = node?.data.label ?? contextNode
+                      const hasExplicitColor = !!node?.data.color
                       const color = normalizeColorToHex(node?.data.color ?? stringToColor(label))
 
                       setNodeEditLabel(label)
                       setNodeEditColor(color)
+                      setNodeEditColorDirty(false)
+                      setNodeEditColorWasExplicit(hasExplicitColor)
                       setRenamingNode(contextNode)
                       setContextMenuPos(null)
 
@@ -688,9 +695,10 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                         if (!renamingNode || renameError) return
                         const nextLabel = nodeEditLabel.trim()
                         renameNode(renamingNode, sanitizedNextNodeId, nextLabel)
+                        const shouldPersistColor = nodeEditColorDirty || nodeEditColorWasExplicit
                         updateNode(sanitizedNextNodeId, {
                           label: nextLabel,
-                          color: normalizeColorToHex(nodeEditColor),
+                          ...(shouldPersistColor ? { color: normalizeColorToHex(nodeEditColor) } : {}),
                         })
                         setRenamingNode(null)
                       } else if (e.key === 'Escape') {
@@ -714,16 +722,20 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     <input
                       type="color"
                       value={nodeEditColor}
-                      onChange={e => setNodeEditColor(normalizeColorToHex(e.target.value, nodeEditColor))}
+                      onChange={e => {
+                        setNodeEditColorDirty(true)
+                        setNodeEditColor(normalizeColorToHex(e.target.value, nodeEditColor))
+                      }}
                       className="h-10 w-12 rounded border border-gray-300 dark:border-gray-600 bg-transparent"
                       aria-label="Node colour"
                     />
                     <input
                       type="text"
                       value={nodeEditColor}
-                      onChange={e =>
+                      onChange={e => {
+                        setNodeEditColorDirty(true)
                         setNodeEditColor(normalizeColorToHex(e.target.value, nodeEditColor))
-                      }
+                      }}
                       className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
                       placeholder="#bdbdbd"
                     />
@@ -742,9 +754,10 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                       if (!renamingNode || renameError) return
                       const nextLabel = nodeEditLabel.trim()
                       renameNode(renamingNode, sanitizedNextNodeId, nextLabel)
+                      const shouldPersistColor = nodeEditColorDirty || nodeEditColorWasExplicit
                       updateNode(sanitizedNextNodeId, {
                         label: nextLabel,
-                        color: normalizeColorToHex(nodeEditColor),
+                        ...(shouldPersistColor ? { color: normalizeColorToHex(nodeEditColor) } : {}),
                       })
                       setRenamingNode(null)
                     }}
