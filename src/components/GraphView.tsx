@@ -258,9 +258,16 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
 
     if (!hasAnyDotPositions) {
       triggerLayout()
+    } else {
+      // Refresh once on load so Cytoscape recomputes after the container has its final size.
+      // (This keeps DOT-provided coordinates but fixes initial render glitches.)
+      requestAnimationFrame(() => {
+        cy.resize()
+        cy.layout({ name: 'preset', fit: true }).run()
+      })
     }
 
-    // Whether we laid out (no positions) or skipped (positions provided), don't auto-run again.
+    // Whether we laid out (no positions) or refreshed (positions provided), don't auto-run again.
     initialLayoutAttemptedRef.current = true
   }, [cy, nodes.length, triggerLayout, hasAnyDotPositions])
 
