@@ -32,6 +32,9 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const editNameInputRef = useRef<HTMLInputElement>(null)
   const pendingNodePlacementsRef = useRef<Record<string, { x: number; y: number }>>({})
+  // Ephemeral cache of current Cytoscape positions so we can preserve layout across remounts.
+  // (We don't want to persist coordinates to DOT unless the user explicitly saves them.)
+  const nodePositionCacheRef = useRef<Record<string, { x: number; y: number }>>({})
   const initialLayoutAttemptedRef = useRef(false)
   const [isLayoutRunning, setIsLayoutRunning] = useState(false)
   const [nodeEditLabel, setNodeEditLabel] = useState('')
@@ -67,6 +70,36 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     return `${nodeIds}::${edgeEndpoints}`
   }, [nodes, edges])
 
+  useEffect(() => {
+    if (!cy) return
+
+    const cacheAll = () => {
+      const next: Record<string, { x: number; y: number }> = {}
+      for (const n of cy.nodes()) {
+        const pos = n.position()
+        next[n.id()] = { x: pos.x, y: pos.y }
+      }
+      nodePositionCacheRef.current = next
+    }
+
+    cacheAll()
+
+    const onNodeMove = (evt: cytoscape.EventObject) => {
+      const target = evt.target as cytoscape.SingularElementReturnValue
+      if (!target || typeof target.id !== 'function') return
+      const pos = target.position()
+      nodePositionCacheRef.current[target.id()] = { x: pos.x, y: pos.y }
+    }
+
+    cy.on('position', 'node', onNodeMove)
+    cy.on('dragfree', 'node', onNodeMove)
+
+    return () => {
+      cy.off('position', 'node', onNodeMove)
+      cy.off('dragfree', 'node', onNodeMove)
+    }
+  }, [cy])
+
   const sanitizeNodeId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
 
   // Function to manually trigger layout
@@ -92,6 +125,14 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     })
 
     layout.on('layoutstop', () => {
+      // Snapshot final positions so remounts can preserve the layout.
+      const next: Record<string, { x: number; y: number }> = {}
+      for (const n of cy.nodes()) {
+        const pos = n.position()
+        next[n.id()] = { x: pos.x, y: pos.y }
+      }
+      nodePositionCacheRef.current = next
+
       // Unlock fixed nodes after layout so the user can still drag them.
       cy.batch(() => {
         for (const id of fixedNodeIds) {
@@ -271,6 +312,8 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
               const label = n.data.label ?? n.id
               return {
                 ...n,
+                // Preserve Cytoscape positions across remounts unless DOT explicitly supplies them.
+                position: n.position ?? nodePositionCacheRef.current[n.id],
                 data: {
                   id: n.id,
                   label,
@@ -315,33 +358,16 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
           cy={(cyInstance: cytoscape.Core) => {
             setCy(cyInstance)
           }}
-          layout={
-            hasAnyDotPositions
-              ? {
-                  name: 'preset',
-                  fit: true,
-                  padding: 100,
-                  animate: false,
-                }
-              : {
-                  name: 'cose',
-                  fit: true,
-                  padding: 100,
-                  nodeDimensionsIncludeLabels: true,
-                  nodeRepulsion: 15000,
-                  nodeOverlap: 20,
-                  idealEdgeLength: 300,
-                  edgeElasticity: 0.3,
-                  nestingFactor: 0.1,
-                  gravity: 40,
-                  numIter: 2500,
-                  initialTemp: 200,
-                  coolingFactor: 0.95,
-                  minTemp: 1.0,
-                  randomize: true,
-                  animate: true,
-                }
-          }
+          // Always mount using a `preset` layout so remounts (e.g. after renaming a node)
+          // don't implicitly re-run a layout and shuffle nodes.
+          // When there are no explicit DOT positions, we run COSE manually once on initial load
+          // (see the `initialLayoutAttemptedRef` effect above).
+          layout={{
+            name: 'preset',
+            fit: true,
+            padding: 100,
+            animate: false,
+          }}
           stylesheet={[
             {
               selector: 'node',
