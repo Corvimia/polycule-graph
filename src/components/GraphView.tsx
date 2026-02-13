@@ -4,7 +4,7 @@ import { useGraphContext } from '../contexts/GraphContext/GraphContext'
 import { useTheme } from '../contexts/ThemeContext/ThemeContext'
 import type cytoscape from 'cytoscape'
 import { normalizeColorToHex, stringToColor } from '../utils/graphDot'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useCytoscapeInteractions } from '../hooks/useCytoscapeInteractions'
 import { ContextMenu, ContextMenuItem, ContextMenuRoot } from './ui/context-menu'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -47,6 +47,25 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   // Focus mode: show only nodes within N hops of a selected node
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null)
   const [focusDepth, setFocusDepth] = useState<number>(1)
+
+  // Cytoscape element IDs (node id / edge source+target) are effectively immutable once created.
+  // When we rename a node, we change its `id` and update edge endpoints.
+  // `react-cytoscapejs` doesn't always reconcile these structural ID changes correctly,
+  // which can cause edges to visually disappear until a full re-render.
+  // Force a remount when the graph's structural identity changes.
+  const cytoscapeKey = useMemo(() => {
+    const nodeIds = nodes
+      .map(n => n.id)
+      .slice()
+      .sort()
+      .join('|')
+    const edgeEndpoints = edges
+      .map(e => `${e.source}--${e.target}`)
+      .slice()
+      .sort()
+      .join('|')
+    return `${nodeIds}::${edgeEndpoints}`
+  }, [nodes, edges])
 
   const sanitizeNodeId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
 
@@ -245,6 +264,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
         }}
       >
         <CytoscapeComponent
+          key={cytoscapeKey}
           elements={[
             ...nodes.map(n => {
               // Use id as label if label is missing
