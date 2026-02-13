@@ -18,11 +18,15 @@ export function toDot(nodes: GraphNode[], edges: GraphEdge[]): string {
   }
   for (const edge of edges) {
     const label = edge.data?.label ? `label="${edge.data.label}"` : ''
+    const labelMode =
+      edge.data?.labelMode && edge.data.labelMode !== 'always'
+        ? `labelmode="${edge.data.labelMode}"`
+        : ''
     const color = edge.data?.color ? `color="${edge.data.color}"` : ''
     const width = edge.data?.width ? `penwidth=${edge.data.width}` : ''
     const pattern =
       edge.data?.pattern && edge.data.pattern !== 'solid' ? `style="${edge.data.pattern}"` : ''
-    const attrs = [label, color, width, pattern].filter(Boolean).join(', ')
+    const attrs = [label, labelMode, color, width, pattern].filter(Boolean).join(', ')
     dot += `  "${edge.source}" -- "${edge.target}"${attrs ? ` [${attrs}]` : ''};\n`
   }
   dot += '}'
@@ -115,6 +119,7 @@ export function dotAstToCytoscape(ast: DotAst): { nodes: GraphNode[]; edges: Gra
             type: 'smoothstep',
             data: {
               ...(attrs.label ? { label: attrs.label } : {}),
+              ...(attrs.labelmode ? { labelMode: attrs.labelmode as 'always' | 'hover' } : {}),
               ...(attrs.color ? { color: attrs.color } : {}),
               ...(attrs.penwidth ? { width: Number(attrs.penwidth) } : {}),
               ...(attrs.style ? { pattern: attrs.style as 'solid' | 'dashed' | 'dotted' } : {}),
