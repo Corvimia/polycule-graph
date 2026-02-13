@@ -4,7 +4,7 @@ import { useGraphContext } from '../contexts/GraphContext/GraphContext'
 import { useTheme } from '../contexts/ThemeContext/ThemeContext'
 import type cytoscape from 'cytoscape'
 import { normalizeColorToHex, stringToColor } from '../utils/graphDot'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useCytoscapeInteractions } from '../hooks/useCytoscapeInteractions'
 import { ContextMenu, ContextMenuItem, ContextMenuRoot } from './ui/context-menu'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -32,6 +32,9 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const editNameInputRef = useRef<HTMLInputElement>(null)
   const pendingNodePlacementsRef = useRef<Record<string, { x: number; y: number }>>({})
+  // Ephemeral cache of current Cytoscape positions so we can preserve layout across remounts.
+  // (We don't want to persist coordinates to DOT unless the user explicitly saves them.)
+  const nodePositionCacheRef = useRef<Record<string, { x: number; y: number }>>({})
   const initialLayoutAttemptedRef = useRef(false)
   const [isLayoutRunning, setIsLayoutRunning] = useState(false)
   const [nodeEditLabel, setNodeEditLabel] = useState('')
@@ -48,7 +51,74 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null)
   const [focusDepth, setFocusDepth] = useState<number>(1)
 
+  // Cytoscape element IDs (node id / edge source+target) are effectively immutable once created.
+  // When we rename a node, we change its `id` and update edge endpoints.
+  // `react-cytoscapejs` doesn't always reconcile these structural ID changes correctly,
+  // which can cause edges to visually disappear until a full re-render.
+  // Force a remount when the graph's structural identity changes.
+  const cytoscapeKey = useMemo(() => {
+    const nodeIds = nodes
+      .map(n => n.id)
+      .slice()
+      .sort()
+      .join('|')
+    const edgeEndpoints = edges
+      .map(e => `${e.source}--${e.target}`)
+      .slice()
+      .sort()
+      .join('|')
+    return `${nodeIds}::${edgeEndpoints}`
+  }, [nodes, edges])
+
+  useEffect(() => {
+    if (!cy) return
+
+    const cacheAll = () => {
+      const next: Record<string, { x: number; y: number }> = {}
+      for (const n of cy.nodes()) {
+        const pos = n.position()
+        next[n.id()] = { x: pos.x, y: pos.y }
+      }
+      nodePositionCacheRef.current = next
+    }
+
+    cacheAll()
+
+    const onNodeMove = (evt: cytoscape.EventObject) => {
+      const target = evt.target as cytoscape.SingularElementReturnValue
+      if (!target || typeof target.id !== 'function') return
+      const pos = target.position()
+      nodePositionCacheRef.current[target.id()] = { x: pos.x, y: pos.y }
+    }
+
+    cy.on('position', 'node', onNodeMove)
+    cy.on('dragfree', 'node', onNodeMove)
+
+    return () => {
+      cy.off('position', 'node', onNodeMove)
+      cy.off('dragfree', 'node', onNodeMove)
+    }
+  }, [cy])
+
   const sanitizeNodeId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+  const renameNodePreservingPosition = useCallback(
+    (id: string, nextId: string, label: string) => {
+      // Cytoscape element IDs are effectively immutable; renaming forces a Cytoscape remount.
+      // Preserve the current on-screen coordinate by copying it to the new node ID in our
+      // ephemeral position cache (without persisting to DOT/state).
+      const cached = nodePositionCacheRef.current[id]
+      const live = cy ? cy.getElementById(id) : null
+      const pos = live && !live.empty() ? live.position() : cached
+      if (pos) {
+        nodePositionCacheRef.current[nextId] = { x: pos.x, y: pos.y }
+        delete nodePositionCacheRef.current[id]
+      }
+
+      renameNode(id, nextId, label)
+    },
+    [cy, renameNode],
+  )
 
   // Function to manually trigger layout
   // If some nodes have explicit DOT positions, keep those fixed while laying out the rest.
@@ -73,6 +143,14 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     })
 
     layout.on('layoutstop', () => {
+      // Snapshot final positions so remounts can preserve the layout.
+      const next: Record<string, { x: number; y: number }> = {}
+      for (const n of cy.nodes()) {
+        const pos = n.position()
+        next[n.id()] = { x: pos.x, y: pos.y }
+      }
+      nodePositionCacheRef.current = next
+
       // Unlock fixed nodes after layout so the user can still drag them.
       cy.batch(() => {
         for (const id of fixedNodeIds) {
@@ -180,9 +258,16 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
 
     if (!hasAnyDotPositions) {
       triggerLayout()
+    } else {
+      // Refresh once on load so Cytoscape recomputes after the container has its final size.
+      // (This keeps DOT-provided coordinates but fixes initial render glitches.)
+      requestAnimationFrame(() => {
+        cy.resize()
+        cy.layout({ name: 'preset', fit: true }).run()
+      })
     }
 
-    // Whether we laid out (no positions) or skipped (positions provided), don't auto-run again.
+    // Whether we laid out (no positions) or refreshed (positions provided), don't auto-run again.
     initialLayoutAttemptedRef.current = true
   }, [cy, nodes.length, triggerLayout, hasAnyDotPositions])
 
@@ -245,12 +330,15 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
         }}
       >
         <CytoscapeComponent
+          key={cytoscapeKey}
           elements={[
             ...nodes.map(n => {
               // Use id as label if label is missing
               const label = n.data.label ?? n.id
               return {
                 ...n,
+                // Preserve Cytoscape positions across remounts unless DOT explicitly supplies them.
+                position: n.position ?? nodePositionCacheRef.current[n.id],
                 data: {
                   id: n.id,
                   label,
@@ -295,33 +383,16 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
           cy={(cyInstance: cytoscape.Core) => {
             setCy(cyInstance)
           }}
-          layout={
-            hasAnyDotPositions
-              ? {
-                  name: 'preset',
-                  fit: true,
-                  padding: 100,
-                  animate: false,
-                }
-              : {
-                  name: 'cose',
-                  fit: true,
-                  padding: 100,
-                  nodeDimensionsIncludeLabels: true,
-                  nodeRepulsion: 15000,
-                  nodeOverlap: 20,
-                  idealEdgeLength: 300,
-                  edgeElasticity: 0.3,
-                  nestingFactor: 0.1,
-                  gravity: 40,
-                  numIter: 2500,
-                  initialTemp: 200,
-                  coolingFactor: 0.95,
-                  minTemp: 1.0,
-                  randomize: true,
-                  animate: true,
-                }
-          }
+          // Always mount using a `preset` layout so remounts (e.g. after renaming a node)
+          // don't implicitly re-run a layout and shuffle nodes.
+          // When there are no explicit DOT positions, we run COSE manually once on initial load
+          // (see the `initialLayoutAttemptedRef` effect above).
+          layout={{
+            name: 'preset',
+            fit: true,
+            padding: 100,
+            animate: false,
+          }}
           stylesheet={[
             {
               selector: 'node',
@@ -687,7 +758,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                       if (e.key === 'Enter') {
                         if (!renamingNode || renameError) return
                         const nextLabel = nodeEditLabel.trim()
-                        renameNode(renamingNode, sanitizedNextNodeId, nextLabel)
+                        renameNodePreservingPosition(renamingNode, sanitizedNextNodeId, nextLabel)
                         updateNode(sanitizedNextNodeId, {
                           label: nextLabel,
                           color: normalizeColorToHex(nodeEditColor),
@@ -741,7 +812,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     onClick={() => {
                       if (!renamingNode || renameError) return
                       const nextLabel = nodeEditLabel.trim()
-                      renameNode(renamingNode, sanitizedNextNodeId, nextLabel)
+                      renameNodePreservingPosition(renamingNode, sanitizedNextNodeId, nextLabel)
                       updateNode(sanitizedNextNodeId, {
                         label: nextLabel,
                         color: normalizeColorToHex(nodeEditColor),
