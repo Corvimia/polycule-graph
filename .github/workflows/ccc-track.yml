@@ -104,7 +104,27 @@ jobs:
               contentBody = prLike.body || '';
             }
 
-            const mentionDetected = mentionRe.test(contentBody);
+            const mentionDetectedRaw = mentionRe.test(contentBody);
+
+            // If this is a PR, suppress BOTH labeling + waking once the PR is closed or merged.
+            async function fetchPrInfo() {
+              if (threadType !== 'pr') return null;
+
+              if (prLike) {
+                return {
+                  state: prLike.state,
+                  merged: Boolean(prLike.merged),
+                };
+              }
+
+              // issue_comment payload for PRs comes through as `issue` with `issue.pull_request`.
+              // Fetch live PR state via API.
+              const res = await github.rest.pulls.get({ owner, repo, pull_number: number });
+              return {
+                state: res.data.state,
+                merged: Boolean(res.data.merged),
+              };
+            }
 
             // Helper: fetch live labels from GitHub (don’t trust payload)
             async function fetchLabels() {
@@ -113,7 +133,13 @@ jobs:
               return labels;
             }
 
-            // Apply label on mention (idempotent)
+            const prInfo = await fetchPrInfo();
+            const prIsOpen = (threadType !== 'pr') || (prInfo && prInfo.state === 'open' && prInfo.merged !== true);
+            const suppressedNonOpenPr = (threadType === 'pr') && !prIsOpen;
+
+            const mentionDetected = suppressedNonOpenPr ? false : mentionDetectedRaw;
+
+            // Apply label on mention (idempotent) — but never on closed/merged PRs.
             if (mentionDetected) {
               await github.rest.issues.addLabels({
                 owner,
@@ -126,8 +152,9 @@ jobs:
             const labels = await fetchLabels();
             const tracked = labels.map(l => String(l).toLowerCase()).includes(trackLabel.toLowerCase());
 
-            // Wake on original mention OR on any activity for tracked threads
-            const shouldWake = mentionDetected || tracked;
+            // Wake on original mention OR on any activity for tracked threads.
+            // For PRs: never wake if the PR is closed or merged.
+            const shouldWake = suppressedNonOpenPr ? false : (mentionDetected || tracked);
 
             const payload = {
               source: 'github',
@@ -164,8 +191,12 @@ jobs:
               signals: {
                 mention_user: `@${mentionUser}`,
                 mention_detected: mentionDetected,
+                mention_detected_raw: mentionDetectedRaw,
                 tracked,
                 should_wake: shouldWake,
+                pr_state: prInfo ? prInfo.state : null,
+                pr_merged: prInfo ? prInfo.merged : null,
+                suppressed_non_open_pr: suppressedNonOpenPr,
               },
             };
 
