@@ -35,7 +35,6 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   const initialLayoutAttemptedRef = useRef(false)
   const [isLayoutRunning, setIsLayoutRunning] = useState(false)
   const [nodeEditLabel, setNodeEditLabel] = useState('')
-  const [nodeEditId, setNodeEditId] = useState('')
   const [nodeEditColor, setNodeEditColor] = useState<string>('#bdbdbd')
 
   const [editingEdge, setEditingEdge] = useState<string | null>(null)
@@ -126,7 +125,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
     setRenamingNode,
   } = useCytoscapeInteractions(cy)
 
-  const sanitizedNextNodeId = sanitizeNodeId(nodeEditId)
+  const sanitizedNextNodeId = sanitizeNodeId(nodeEditLabel.trim())
   const hasDuplicateId =
     !!renamingNode &&
     sanitizedNextNodeId.length > 0 &&
@@ -152,7 +151,6 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
   useEffect(() => {
     if (!renamingNode) {
       setNodeEditLabel('')
-      setNodeEditId('')
       setNodeEditColor('#bdbdbd')
     }
   }, [renamingNode])
@@ -464,7 +462,6 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                       const color = node?.data.color ?? stringToColor(label)
 
                       setNodeEditLabel(label)
-                      setNodeEditId(contextNode)
                       setNodeEditColor(color)
                       setRenamingNode(contextNode)
                       setContextMenuPos(null)
@@ -647,7 +644,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
                         if (!renamingNode || renameError) return
-                        const nextLabel = nodeEditLabel.trim() || sanitizedNextNodeId
+                        const nextLabel = nodeEditLabel.trim()
                         renameNode(renamingNode, sanitizedNextNodeId, nextLabel)
                         updateNode(sanitizedNextNodeId, { label: nextLabel, color: nodeEditColor })
                         setRenamingNode(null)
@@ -656,21 +653,8 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                       }
                     }}
                   />
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                    Node ID
-                  </div>
-                  <input
-                    type="text"
-                    value={nodeEditId}
-                    onChange={e => setNodeEditId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
-                    placeholder="alice"
-                  />
                   <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                    Sanitized: <span className="font-mono">{sanitizedNextNodeId || '—'}</span>
+                    Node ID: <span className="font-mono">{sanitizedNextNodeId || '—'}</span>
                   </div>
                   {renameError && (
                     <div className="mt-2 text-sm text-red-600 dark:text-red-400">{renameError}</div>
@@ -709,7 +693,7 @@ export function GraphView({ sidebarOpen, isMobile }: GraphViewProps) {
                   <button
                     onClick={() => {
                       if (!renamingNode || renameError) return
-                      const nextLabel = nodeEditLabel.trim() || sanitizedNextNodeId
+                      const nextLabel = nodeEditLabel.trim()
                       renameNode(renamingNode, sanitizedNextNodeId, nextLabel)
                       updateNode(sanitizedNextNodeId, { label: nextLabel, color: nodeEditColor })
                       setRenamingNode(null)
